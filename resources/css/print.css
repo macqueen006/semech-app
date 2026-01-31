@@ -1,0 +1,312 @@
+@media print {
+    /* Page Setup */
+    @page {
+        margin: 2cm;
+        size: A4;
+    }
+    /* Reset body */
+    body {
+        background: white !important;
+        color: black !important;
+        font-size: 12pt;
+        line-height: 1.6;
+    }
+    /* Hide unnecessary elements */
+    nav,
+    header,
+    footer,
+    aside,
+    .sidebar,
+    button,
+    .btn,
+    form,
+    input,
+    textarea,
+    select,
+    .social-share,
+    .comments,
+    .newsletter,
+    .advertisement,
+    .popup,
+    .modal,
+    [class*="share"],
+    [class*="subscribe"],
+    [x-data]>div[class*="fixed"],
+    [class*="sticky"],
+    [class*="floating"] {
+        display: none !important;
+    }
+    /* Hide specific sections from post page */
+    .reading-progress-bar,
+    [class*="progress"],
+    [class*="related-posts"],
+    [class*="next-post"],
+    [class*="trending"],
+    [class*="popular"],
+    section[class*="bg-gray"],
+    section[class*="bg-blue"] {
+        display: none !important;
+    }
+    /* Container and layout */
+    .container,
+    .max-w-4xl,
+    .max-w-6xl {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    article {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+    /* Typography */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        color: black !important;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        font-weight: bold;
+    }
+    h1 {
+        font-size: 24pt;
+        margin-bottom: 0.5cm;
+        border-bottom: 2pt solid black;
+        padding-bottom: 0.3cm;
+    }
+    h2 {
+        font-size: 18pt;
+        margin-top: 0.8cm;
+        margin-bottom: 0.4cm;
+    }
+    h3 {
+        font-size: 14pt;
+        margin-top: 0.6cm;
+        margin-bottom: 0.3cm;
+    }
+    p {
+        margin-bottom: 0.4cm;
+        orphans: 3;
+        widows: 3;
+    }
+    /* Links - show URL after link text */
+    a {
+        color: black !important;
+        text-decoration: underline;
+    }
+    a[href^="http"]:after {
+        content: " (" attr(href) ")";
+        font-size: 10pt;
+        color: #666;
+    }
+    /* Don't show URLs for anchor links */
+    a[href^="#"]:after,
+    a[href^="/"]:after {
+        content: "";
+    }
+    /* Post header */
+    article header {
+        margin-bottom: 1cm;
+        border-bottom: 1pt solid #ccc;
+        padding-bottom: 0.5cm;
+    }
+    /* Category badge */
+    article header [class*="category"],
+    article header span[style*="background"] {
+        border: 1pt solid #333 !important;
+        background: white !important;
+        color: black !important;
+        padding: 0.1cm 0.3cm;
+        font-size: 10pt;
+        display: inline-block;
+    }
+    /* Author info */
+    article header [class*="author"],
+    article header [class*="meta"] {
+        font-size: 10pt;
+        color: #666 !important;
+    }
+    /* Author image in header */
+    article header img {
+        max-width: 1.5cm;
+        max-height: 1.5cm;
+        border-radius: 50%;
+    }
+    /* Featured image */
+    article>div img:first-of-type,
+    article header+div img {
+        max-width: 100%;
+        height: auto;
+        page-break-before: avoid;
+        page-break-after: avoid;
+        margin: 0.5cm 0 1cm 0;
+    }
+    /* Post content */
+    .prose,
+    article [class*="content"],
+    article>div {
+        max-width: 100% !important;
+        font-family: Georgia, 'Times New Roman', serif;
+    }
+    /* Images in content */
+    img {
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid;
+        margin: 0.5cm 0;
+        border: 1pt solid #ddd;
+    }
+    /* Code blocks */
+    pre,
+    code {
+        background: #f5f5f5 !important;
+        border: 1pt solid #ddd !important;
+        padding: 0.2cm;
+        font-size: 9pt;
+        page-break-inside: avoid;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    /* Blockquotes */
+    blockquote {
+        border-left: 3pt solid #333;
+        padding-left: 0.5cm;
+        margin: 0.5cm 0;
+        font-style: italic;
+        color: #333 !important;
+        page-break-inside: avoid;
+    }
+    /* Lists */
+    ul,
+    ol {
+        margin: 0.5cm 0;
+        padding-left: 1cm;
+    }
+    li {
+        margin-bottom: 0.2cm;
+    }
+    /* Tables */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: avoid;
+        margin: 0.5cm 0;
+        font-size: 10pt;
+    }
+    table,
+    th,
+    td {
+        border: 1pt solid #333;
+    }
+    th,
+    td {
+        padding: 0.2cm;
+        text-align: left;
+    }
+    th {
+        background: #f0f0f0 !important;
+        font-weight: bold;
+    }
+    /* Author bio section */
+    article [class*="bio"],
+    article [class*="author-bio"] {
+        border: 1pt solid #ddd;
+        padding: 0.5cm;
+        margin: 1cm 0;
+        page-break-inside: avoid;
+        background: #f9f9f9 !important;
+    }
+    article [class*="bio"] img {
+        width: 2cm;
+        height: 2cm;
+        border-radius: 50%;
+    }
+    /* Remove shadows and effects */
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        background-image: none !important;
+    }
+    /* Force black text on white background */
+    *:not(pre):not(code) {
+        background: white !important;
+        color: black !important;
+    }
+    /* Add "Printed from" footer on each page */
+    @page {
+        @bottom-right {
+            content: "Page " counter(page) " of " counter(pages);
+            font-size: 9pt;
+            color: #666;
+        }
+    }
+    /* Add print date and URL at the end */
+    article::after {
+        content: "\A\A ──────────────────────────────────────\A\A Printed from: " attr(data-url) "\A Date: " attr(data-date);
+        white-space: pre;
+        display: block;
+        margin-top: 1cm;
+        padding-top: 0.5cm;
+        border-top: 1pt solid #ccc;
+        font-size: 9pt;
+        color: #666;
+    }
+    /* Ensure content starts on new page if needed */
+    article {
+        page-break-before: auto;
+    }
+    /* Avoid breaking these elements */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    figure,
+    img,
+    table,
+    pre,
+    blockquote {
+        page-break-inside: avoid;
+    }
+    /* Keep heading with following content */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        page-break-after: avoid;
+    }
+}
+
+
+/* Print button styles (visible on screen only) */
+
+@media screen {
+    .print-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        color: #374151;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .print-button:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+    }
+    .print-button svg {
+        width: 1rem;
+        height: 1rem;
+    }
+}
