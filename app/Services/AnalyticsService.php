@@ -11,6 +11,7 @@ use App\Models\Bookmark;
 use App\Models\Comment;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AnalyticsService
 {
@@ -20,26 +21,30 @@ class AnalyticsService
     protected $cacheDuration = 3600;
 
     /**
+     * Safe query wrapper with error handling
+     */
+    protected function safeQuery($callback, $default = [])
+    {
+        try {
+            return $callback();
+        } catch (\Exception $e) {
+            Log::error('Analytics query failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $default;
+        }
+    }
+
+    /**
      * Remember with key tracking for clearing later
      */
     protected function rememberWithTracking($key, $callback)
     {
-        // Track this key for later clearing
-        $this->trackCacheKey($key);
-
-        return Cache::remember($key, $this->cacheDuration, $callback);
-    }
-
-    /**
-     * Track a cache key
-     */
-    protected function trackCacheKey($key)
-    {
-        $keys = Cache::get('analytics_cache_keys', []);
-
-        if (!in_array($key, $keys)) {
-            $keys[] = $key;
-            Cache::forever('analytics_cache_keys', $keys);
+        try {
+            return Cache::remember($key, $this->cacheDuration, $callback);
+        } catch (\Exception $e) {
+            Log::error('Cache operation failed: ' . $e->getMessage());
+            return $callback();
         }
     }
 
@@ -70,18 +75,27 @@ class AnalyticsService
      */
     protected function getPostStats($startDate, $endDate)
     {
-        return [
-            'total' => Post::count(),
-            'published' => Post::where('is_published', true)->count(),
-            'drafts' => Post::where('is_published', false)->count(),
-            'scheduled' => Post::where('is_published', true)
-                ->where('scheduled_at', '>', now())
-                ->count(),
-            'in_period' => Post::whereBetween('created_at', [$startDate, $endDate])->count(),
-            'published_in_period' => Post::where('is_published', true)
-                ->whereBetween('created_at', [$startDate, $endDate])
-                ->count(),
-        ];
+        return $this->safeQuery(function () use ($startDate, $endDate) {
+            return [
+                'total' => Post::count(),
+                'published' => Post::where('is_published', true)->count(),
+                'drafts' => Post::where('is_published', false)->count(),
+                'scheduled' => Post::where('is_published', true)
+                    ->where('scheduled_at', '>', now())
+                    ->count(),
+                'in_period' => Post::whereBetween('created_at', [$startDate, $endDate])->count(),
+                'published_in_period' => Post::where('is_published', true)
+                    ->whereBetween('created_at', [$startDate, $endDate])
+                    ->count(),
+            ];
+        }, [
+            'total' => 0,
+            'published' => 0,
+            'drafts' => 0,
+            'scheduled' => 0,
+            'in_period' => 0,
+            'published_in_period' => 0,
+        ]);
     }
 
     /**
@@ -89,15 +103,29 @@ class AnalyticsService
      */
     protected function getViewStats($startDate, $endDate)
     {
-        return [
-            'total' => Post::sum('view_count') ?? 0,
-            'in_period' => PostView::whereBetween('viewed_at', [$startDate, $endDate])->count(),
-            'unique_in_period' => PostView::whereBetween('viewed_at', [$startDate, $endDate])
-                ->distinct()
-                ->count('ip_address'),
-            'daily_breakdown' => PostView::getDailyViews($startDate, $endDate),
-            'device_breakdown' => PostView::getDeviceBreakdown($startDate, $endDate),
-        ];
+        return $this->safeQuery(function () use ($startDate, $endDate) {
+            return [
+                'total' => Post::sum('view_count') ?? 0,
+                'in_period' => PostView::whereBetween('viewed_at', [$startDate, $endDate])->count(),
+                'unique_in_period' => PostView::whereBetween('viewed_at', [$startDate, $endDate])
+                    ->distinct()
+                    ->count('ip_address'),
+                'daily_breakdown' => $this->safeQuery(
+                    fn() => PostView::getDailyViews($startDate, $endDate),
+                    []
+                ),
+                'device_breakdown' => $this->safeQuery(
+                    fn() => PostView::getDeviceBreakdown($startDate, $endDate),
+                    []
+                ),
+            ];
+        }, [
+            'total' => 0,
+            'in_period' => 0,
+            'unique_in_period' => 0,
+            'daily_breakdown' => [],
+            'device_breakdown' => [],
+        ]);
     }
 
     /**
@@ -105,13 +133,19 @@ class AnalyticsService
      */
     protected function getUserStats($startDate, $endDate)
     {
-        return [
-            'total' => User::count(),
-            'new_in_period' => User::whereBetween('created_at', [$startDate, $endDate])->count(),
-            'active_authors' => User::whereHas('posts', function ($query) {
-                $query->where('is_published', true);
-            })->count(),
-        ];
+        return $this->safeQuery(function () use ($startDate, $endDate) {
+            return [
+                'total' => User::count(),
+                'new_in_period' => User::whereBetween('created_at', [$startDate, $endDate])->count(),
+                'active_authors' => User::whereHas('posts', function ($query) {
+                    $query->where('is_published', true);
+                })->count(),
+            ];
+        }, [
+            'total' => 0,
+            'new_in_period' => 0,
+            'active_authors' => 0,
+        ]);
     }
 
     /**
@@ -119,15 +153,21 @@ class AnalyticsService
      */
     protected function getSubscriberStats($startDate, $endDate)
     {
-        return [
-            'total_active' => NewsletterSubscriber::active()->count(),
-            'new_in_period' => NewsletterSubscriber::active()
-                ->whereBetween('subscribed_at', [$startDate, $endDate])
-                ->count(),
-            'unsubscribed_in_period' => NewsletterSubscriber::whereNotNull('unsubscribed_at')
-                ->whereBetween('unsubscribed_at', [$startDate, $endDate])
-                ->count(),
-        ];
+        return $this->safeQuery(function () use ($startDate, $endDate) {
+            return [
+                'total_active' => NewsletterSubscriber::active()->count(),
+                'new_in_period' => NewsletterSubscriber::active()
+                    ->whereBetween('subscribed_at', [$startDate, $endDate])
+                    ->count(),
+                'unsubscribed_in_period' => NewsletterSubscriber::whereNotNull('unsubscribed_at')
+                    ->whereBetween('unsubscribed_at', [$startDate, $endDate])
+                    ->count(),
+            ];
+        }, [
+            'total_active' => 0,
+            'new_in_period' => 0,
+            'unsubscribed_in_period' => 0,
+        ]);
     }
 
     /**
@@ -135,16 +175,24 @@ class AnalyticsService
      */
     protected function getEngagementStats($startDate, $endDate)
     {
-        $totalPosts = Post::where('is_published', true)->count();
-        $totalComments = Comment::count();
+        return $this->safeQuery(function () use ($startDate, $endDate) {
+            $totalPosts = Post::where('is_published', true)->count();
+            $totalComments = Comment::count();
 
-        return [
-            'total_bookmarks' => Bookmark::count(),
-            'bookmarks_in_period' => Bookmark::whereBetween('created_at', [$startDate, $endDate])->count(),
-            'total_comments' => $totalComments,
-            'comments_in_period' => Comment::whereBetween('created_at', [$startDate, $endDate])->count(),
-            'avg_comments_per_post' => $totalPosts > 0 ? round($totalComments / $totalPosts, 2) : 0,
-        ];
+            return [
+                'total_bookmarks' => Bookmark::count(),
+                'bookmarks_in_period' => Bookmark::whereBetween('created_at', [$startDate, $endDate])->count(),
+                'total_comments' => $totalComments,
+                'comments_in_period' => Comment::whereBetween('created_at', [$startDate, $endDate])->count(),
+                'avg_comments_per_post' => $totalPosts > 0 ? round($totalComments / $totalPosts, 2) : 0,
+            ];
+        }, [
+            'total_bookmarks' => 0,
+            'bookmarks_in_period' => 0,
+            'total_comments' => 0,
+            'comments_in_period' => 0,
+            'avg_comments_per_post' => 0,
+        ]);
     }
 
     /**
@@ -155,11 +203,13 @@ class AnalyticsService
         $cacheKey = "analytics.top_posts.{$orderBy}.{$limit}";
 
         return $this->rememberWithTracking($cacheKey, function () use ($limit, $orderBy) {
-            return Post::where('is_published', true)
-                ->orderByDesc($orderBy)
-                ->with('user', 'category')
-                ->limit($limit)
-                ->get();
+            return $this->safeQuery(function () use ($limit, $orderBy) {
+                return Post::where('is_published', true)
+                    ->orderByDesc($orderBy)
+                    ->with('user', 'category')
+                    ->limit($limit)
+                    ->get();
+            }, collect([]));
         });
     }
 
@@ -171,15 +221,17 @@ class AnalyticsService
         $cacheKey = "analytics.popular_categories.{$limit}";
 
         return $this->rememberWithTracking($cacheKey, function () use ($limit) {
-            return Category::withCount(['posts' => function ($query) {
-                $query->where('is_published', true);
-            }])
-                ->whereHas('posts', function ($query) {
+            return $this->safeQuery(function () use ($limit) {
+                return Category::withCount(['posts' => function ($query) {
                     $query->where('is_published', true);
-                })
-                ->orderByDesc('posts_count')
-                ->limit($limit)
-                ->get();
+                }])
+                    ->whereHas('posts', function ($query) {
+                        $query->where('is_published', true);
+                    })
+                    ->orderByDesc('posts_count')
+                    ->limit($limit)
+                    ->get();
+            }, collect([]));
         });
     }
 
@@ -191,14 +243,16 @@ class AnalyticsService
         $cacheKey = "analytics.category_views.{$limit}";
 
         return $this->rememberWithTracking($cacheKey, function () use ($limit) {
-            return Post::select('category_id', DB::raw('SUM(view_count) as total_views'))
-                ->where('is_published', true)
-                ->whereNotNull('category_id')
-                ->groupBy('category_id')
-                ->orderByDesc('total_views')
-                ->with('category')
-                ->limit($limit)
-                ->get();
+            return $this->safeQuery(function () use ($limit) {
+                return Post::select('category_id', DB::raw('SUM(view_count) as total_views'))
+                    ->where('is_published', true)
+                    ->whereNotNull('category_id')
+                    ->groupBy('category_id')
+                    ->orderByDesc('total_views')
+                    ->with('category')
+                    ->limit($limit)
+                    ->get();
+            }, collect([]));
         });
     }
 
@@ -210,43 +264,37 @@ class AnalyticsService
         $cacheKey = "analytics.top_authors_posts.{$limit}";
 
         return $this->rememberWithTracking($cacheKey, function () use ($limit) {
-            return User::withCount(['posts' => function ($query) {
-                $query->where('is_published', true);
-            }])
-                ->whereHas('posts', function ($query) {
+            return $this->safeQuery(function () use ($limit) {
+                return User::withCount(['posts' => function ($query) {
                     $query->where('is_published', true);
-                })
-                ->orderByDesc('posts_count')
-                ->limit($limit)
-                ->get();
+                }])
+                    ->whereHas('posts', function ($query) {
+                        $query->where('is_published', true);
+                    })
+                    ->orderByDesc('posts_count')
+                    ->limit($limit)
+                    ->get();
+            }, collect([]));
         });
     }
 
     /**
-     * Get top authors by views
+     * Get top authors by views (FIXED for production)
      */
     public function getTopAuthorsByViews($limit = 5)
     {
         $cacheKey = "analytics.top_authors_views.{$limit}";
 
         return $this->rememberWithTracking($cacheKey, function () use ($limit) {
-            return User::select('users.*', DB::raw('SUM(posts.view_count) as total_views'))
-                ->join('posts', 'users.id', '=', 'posts.user_id')
-                ->where('posts.is_published', true)
-                ->groupBy(
-                    'users.id',
-                    'users.firstname',
-                    'users.lastname',
-                    'users.email',
-                    'users.email_verified_at',
-                    'users.password',
-                    'users.remember_token',
-                    'users.created_at',
-                    'users.updated_at'
-                )
-                ->orderByDesc('total_views')
-                ->limit($limit)
-                ->get();
+            return $this->safeQuery(function () use ($limit) {
+                return User::select('users.*', DB::raw('SUM(posts.view_count) as total_views'))
+                    ->join('posts', 'users.id', '=', 'posts.user_id')
+                    ->where('posts.is_published', true)
+                    ->groupBy('users.id')  // Fixed: Only group by ID
+                    ->orderByDesc('total_views')
+                    ->limit($limit)
+                    ->get();
+            }, collect([]));
         });
     }
 
@@ -258,13 +306,15 @@ class AnalyticsService
         $cacheKey = "analytics.most_bookmarked.{$limit}";
 
         return $this->rememberWithTracking($cacheKey, function () use ($limit) {
-            return Post::withCount('bookmarks')
-                ->where('is_published', true)
-                ->whereHas('bookmarks')
-                ->orderByDesc('bookmarks_count')
-                ->with('user')
-                ->limit($limit)
-                ->get();
+            return $this->safeQuery(function () use ($limit) {
+                return Post::withCount('bookmarks')
+                    ->where('is_published', true)
+                    ->whereHas('bookmarks')
+                    ->orderByDesc('bookmarks_count')
+                    ->with('user')
+                    ->limit($limit)
+                    ->get();
+            }, collect([]));
         });
     }
 
@@ -276,13 +326,15 @@ class AnalyticsService
         $cacheKey = "analytics.most_commented.{$limit}";
 
         return $this->rememberWithTracking($cacheKey, function () use ($limit) {
-            return Post::withCount('comments')
-                ->where('is_published', true)
-                ->whereHas('comments')
-                ->orderByDesc('comments_count')
-                ->with('user')
-                ->limit($limit)
-                ->get();
+            return $this->safeQuery(function () use ($limit) {
+                return Post::withCount('comments')
+                    ->where('is_published', true)
+                    ->whereHas('comments')
+                    ->orderByDesc('comments_count')
+                    ->with('user')
+                    ->limit($limit)
+                    ->get();
+            }, collect([]));
         });
     }
 
@@ -291,30 +343,36 @@ class AnalyticsService
      */
     public function getGrowthComparison($currentStart, $currentEnd, $previousStart, $previousEnd)
     {
-        $current = [
-            'posts' => Post::whereBetween('created_at', [$currentStart, $currentEnd])->count(),
-            'views' => PostView::whereBetween('viewed_at', [$currentStart, $currentEnd])->count(),
-            'bookmarks' => Bookmark::whereBetween('created_at', [$currentStart, $currentEnd])->count(),
-            'comments' => Comment::whereBetween('created_at', [$currentStart, $currentEnd])->count(),
-        ];
+        return $this->safeQuery(function () use ($currentStart, $currentEnd, $previousStart, $previousEnd) {
+            $current = [
+                'posts' => Post::whereBetween('created_at', [$currentStart, $currentEnd])->count(),
+                'views' => PostView::whereBetween('viewed_at', [$currentStart, $currentEnd])->count(),
+                'bookmarks' => Bookmark::whereBetween('created_at', [$currentStart, $currentEnd])->count(),
+                'comments' => Comment::whereBetween('created_at', [$currentStart, $currentEnd])->count(),
+            ];
 
-        $previous = [
-            'posts' => Post::whereBetween('created_at', [$previousStart, $previousEnd])->count(),
-            'views' => PostView::whereBetween('viewed_at', [$previousStart, $previousEnd])->count(),
-            'bookmarks' => Bookmark::whereBetween('created_at', [$previousStart, $previousEnd])->count(),
-            'comments' => Comment::whereBetween('created_at', [$previousStart, $previousEnd])->count(),
-        ];
+            $previous = [
+                'posts' => Post::whereBetween('created_at', [$previousStart, $previousEnd])->count(),
+                'views' => PostView::whereBetween('viewed_at', [$previousStart, $previousEnd])->count(),
+                'bookmarks' => Bookmark::whereBetween('created_at', [$previousStart, $previousEnd])->count(),
+                'comments' => Comment::whereBetween('created_at', [$previousStart, $previousEnd])->count(),
+            ];
 
-        return [
-            'current' => $current,
-            'previous' => $previous,
-            'changes' => [
-                'posts' => $this->calculatePercentageChange($current['posts'], $previous['posts']),
-                'views' => $this->calculatePercentageChange($current['views'], $previous['views']),
-                'bookmarks' => $this->calculatePercentageChange($current['bookmarks'], $previous['bookmarks']),
-                'comments' => $this->calculatePercentageChange($current['comments'], $previous['comments']),
-            ],
-        ];
+            return [
+                'current' => $current,
+                'previous' => $previous,
+                'changes' => [
+                    'posts' => $this->calculatePercentageChange($current['posts'], $previous['posts']),
+                    'views' => $this->calculatePercentageChange($current['views'], $previous['views']),
+                    'bookmarks' => $this->calculatePercentageChange($current['bookmarks'], $previous['bookmarks']),
+                    'comments' => $this->calculatePercentageChange($current['comments'], $previous['comments']),
+                ],
+            ];
+        }, [
+            'current' => ['posts' => 0, 'views' => 0, 'bookmarks' => 0, 'comments' => 0],
+            'previous' => ['posts' => 0, 'views' => 0, 'bookmarks' => 0, 'comments' => 0],
+            'changes' => ['posts' => 0, 'views' => 0, 'bookmarks' => 0, 'comments' => 0],
+        ]);
     }
 
     /**
@@ -334,15 +392,36 @@ class AnalyticsService
      */
     public function clearCache()
     {
-        // Get all tracked cache keys
-        $keys = Cache::get('analytics_cache_keys', []);
+        try {
+            // Clear specific analytics cache keys
+            $patterns = [
+                'analytics.overview.*',
+                'analytics.top_posts.*',
+                'analytics.popular_categories.*',
+                'analytics.category_views.*',
+                'analytics.top_authors_posts.*',
+                'analytics.top_authors_views.*',
+                'analytics.most_bookmarked.*',
+                'analytics.most_commented.*',
+            ];
 
-        // Clear each tracked key
-        foreach ($keys as $key) {
-            Cache::forget($key);
+            // If using Redis, you can clear by pattern
+            if (config('cache.default') === 'redis') {
+                foreach ($patterns as $pattern) {
+                    $keys = Cache::getRedis()->keys($pattern);
+                    if (!empty($keys)) {
+                        Cache::getRedis()->del($keys);
+                    }
+                }
+            } else {
+                // Fallback: just flush all cache (be careful in production)
+                Cache::flush();
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to clear analytics cache: ' . $e->getMessage());
+            return false;
         }
-
-        // Clear the tracking key itself
-        Cache::forget('analytics_cache_keys');
     }
 }
