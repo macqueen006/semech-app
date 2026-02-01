@@ -237,11 +237,10 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
         Route::get('/browse-images', [AdminPostController::class, 'browseImages'])->name('browse-images');
         Route::get('/browse-editor-images', [AdminPostController::class, 'browseEditorImages'])->name('browse-editor-images');
 
-
+        //edit
         Route::get('/{id}/edit', [AdminPostController::class, 'edit'])
             ->name('edit')
             ->middleware('permission:post-edit');
-
         Route::put('/{id}', [AdminPostController::class, 'update'])
             ->name('update')
             ->middleware('permission:post-edit');
@@ -300,7 +299,9 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
         Route::get('/{id}/edit/history/{history_id}/show', [AdminPostHistoryController::class, 'show'])
             ->name('history.show')
             ->middleware('permission:post-list');
-  });
+
+        Route::delete('/drafts/{id}', [AdminPostHistoryController::class, 'deleteDraft'])->name('drafts.delete');
+    });
 
     // Saved Posts - Protected
     Route::prefix('posts-saved')->name('posts-saved.')->middleware('permission:post-list')->group(function () {
@@ -314,67 +315,7 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
             return redirect('dashboard/posts/create?edit=' . $saved->id);
         })->name('edit')->middleware('permission:post-edit');
 
-        Route::delete('/{id}', function ($id) {
-            $saved = SavedPost::findOrFail($id);
-            if ($saved->user_id != auth()->id() && !auth()->user()->hasPermissionTo('post-super-list')) {
-                abort(403);
-            }
-            $saved->delete();
-            return redirect()->back();
-        })->name('destroy')->middleware('permission:post-delete');
-
-        // Auto-save API - Protected
-        Route::post('/auto-save', function (Request $request) {
-            $calculateReadTime = function ($body) {
-                $readingSpeed = 200;
-                $words = str_word_count(strip_tags($body));
-                return ceil($words / $readingSpeed);
-            };
-
-            $post = SavedPost::create([
-                'user_id' => auth()->id(),
-                'title' => $request->title,
-                'excerpt' => $request->excerpt,
-                'body' => $request->body,
-                'image_path' => $request->image ?? null,
-                'is_published' => $request->is_published == 'on',
-                'category_id' => $request->category_id ?? null,
-                'read_time' => $calculateReadTime($request->body),
-            ]);
-
-            return response()->json(['message' => 'Saved!', 'id' => $post->id]);
-        })->name('auto-save.store')->middleware('permission:post-create');
-
-        Route::put('/{id}/auto-save', function (Request $request, $id) {
-            $calculateReadTime = function ($body) {
-                $readingSpeed = 200;
-                $words = str_word_count(strip_tags($body));
-                return ceil($words / $readingSpeed);
-            };
-
-            $savedPost = SavedPost::findOrFail($id);
-
-            if ($savedPost->user_id != auth()->id() && !auth()->user()->hasPermissionTo('post-super-list')) {
-                abort(403);
-            }
-
-            $input = [
-                'title' => $request->title,
-                'excerpt' => $request->excerpt,
-                'body' => $request->body,
-                'is_published' => $request->is_published == 'on',
-                'category_id' => $request->category_id ?? null,
-                'read_time' => $calculateReadTime($request->body),
-            ];
-
-            if (!empty($request->image)) {
-                $input['image_path'] = $request->image;
-            }
-
-            $savedPost->update($input);
-
-            return response()->json(['message' => 'Saved']);
-        })->name('auto-save.update')->middleware('permission:post-edit');
+        Route::delete('/{id}', [AdminSavedPostController::class, 'destroy'])->name('destroy')->middleware('permission:post-delete');
     });
 
     // Categories - Protected

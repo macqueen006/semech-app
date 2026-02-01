@@ -7,6 +7,7 @@
         value="{{ $savedPost->title ?? '' }}"
         maxlength="255"
         placeholder="Enter post title..."
+        required
     />
     <div class="flex flex-col">
         <p id="titleCounter" class="text-sm text-gray-500 mt-1">

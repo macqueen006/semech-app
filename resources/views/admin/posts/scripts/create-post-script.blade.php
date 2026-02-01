@@ -4,7 +4,7 @@
         // STATE MANAGEMENT
         // ========================================
         let uploadedEditorImages = [];
-        let currentFeaturedImagePath = document.getElementById('imagePath').value || '';
+        let currentFeaturedImagePath = document.getElementById('imagePath')?.value || '';
         let hasUnsavedChanges = false;
 
         // ========================================
@@ -166,7 +166,7 @@
 
             const title = document.getElementById('title').value;
             const excerpt = document.getElementById('excerpt').value;
-            const imagePath = document.getElementById('imagePath').value;
+            const imagePath = document.getElementById('imagePath')?.value;
 
             const metaTitleInput = document.getElementById('metaTitle');
             const metaDescriptionInput = document.getElementById('metaDescription');

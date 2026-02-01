@@ -302,6 +302,7 @@ class PostController extends Controller
 
         return response()->json(['success' => true, 'message' => "{$removed} post(s) removed from highlights successfully!"]);
     }
+
     public function create(Request $request)
     {
         if (!auth()->check() || !auth()->user()->can('post-create')) {
@@ -368,93 +369,6 @@ class PostController extends Controller
         ]);
     }
 
-    /*public function store(Request $request)
-    {
-        if (!auth()->user()->can('post-create')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have permission to create posts.'
-            ], 403);
-        }
-
-        $rules = [
-            'title' => 'required|max:255|unique:posts,title',
-            'excerpt' => 'required|max:510',
-            'body' => 'required',
-            'category_id' => 'required|integer|exists:categories,id',
-            'image_path' => 'required|string',
-            'read_time' => 'required|integer',
-            'saved_post_id' => 'nullable|integer|exists:saved_posts,id',
-
-            // SEO Fields
-            'meta_title' => 'nullable|string|max:80',
-            'meta_description' => 'nullable|string|max:160',
-            'focus_keyword' => 'nullable|string|max:100',
-            'image_alt' => 'nullable|string|max:255',
-            'og_title' => 'nullable|string|max:80',
-            'og_description' => 'nullable|string|max:160',
-            'og_image' => 'nullable|string',
-            'twitter_title' => 'nullable|string|max:80',
-            'twitter_description' => 'nullable|string|max:160',
-            'twitter_image' => 'nullable|string',
-
-            // Scheduling
-            'use_scheduling' => 'boolean',
-            'scheduled_at' => 'nullable|date|after:now',
-            'use_expiration' => 'boolean',
-            'expires_at' => 'nullable|date',
-        ];
-
-        $validated = $request->validate($rules);
-
-        $post = Post::create([
-            'user_id' => auth()->id(),
-            'title' => $validated['title'],
-            'excerpt' => $validated['excerpt'],
-            'body' => $validated['body'],
-            'image_path' => $validated['image_path'],
-            'slug' => Str::slug($validated['title']),
-            'is_published' => true,
-            'category_id' => $validated['category_id'],
-            'read_time' => $validated['read_time'],
-            'change_user_id' => auth()->id(),
-            'changelog' => null,
-            'scheduled_at' => $request->use_scheduling && $request->scheduled_at ? $request->scheduled_at : null,
-            'expires_at' => $request->use_expiration && $request->expires_at ? $request->expires_at : null,
-
-            // SEO fields
-            'meta_title' => $validated['meta_title'],
-            'meta_description' => $validated['meta_description'],
-            'focus_keyword' => $validated['focus_keyword'],
-            'image_alt' => $validated['image_alt'],
-            'og_title' => $validated['og_title'],
-            'og_description' => $validated['og_description'],
-            'og_image' => $validated['og_image'],
-            'twitter_title' => $validated['twitter_title'],
-            'twitter_description' => $validated['twitter_description'],
-            'twitter_image' => $validated['twitter_image'],
-        ]);
-
-        // Delete the draft
-        if ($request->saved_post_id) {
-            SavedPost::where('id', $request->saved_post_id)
-                ->where('user_id', auth()->id())
-                ->delete();
-        }
-
-        auth()->user()->notify(new PostNotification('SUCCESS', 'Post created', "/post/{$post->slug}"));
-
-        $message = 'Post published successfully!';
-        if ($request->use_scheduling && $request->scheduled_at) {
-            $message = 'Post scheduled for ' . \Carbon\Carbon::parse($request->scheduled_at)->format('M d, Y H:i');
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'redirect' => route('admin.posts.index')
-        ]);
-    }*/
     public function store(Request $request)
     {
         if (!auth()->user()->can('post-create')) {
@@ -465,7 +379,7 @@ class PostController extends Controller
         }
 
         try {
-            $rules = [
+            $validated = $request->validate([
                 'title' => 'required|max:255|unique:posts,title',
                 'excerpt' => 'required|max:510',
                 'body' => 'required',
@@ -491,9 +405,63 @@ class PostController extends Controller
                 'scheduled_at' => 'nullable|date|after:now',
                 'use_expiration' => 'boolean',
                 'expires_at' => 'nullable|date',
-            ];
+            ], [
+                // Title validation messages
+                'title.required' => 'Please enter a post title.',
+                'title.max' => 'The post title cannot exceed 255 characters.',
+                'title.unique' => 'A post with this title already exists. Please choose a different title.',
 
-            $validated = $request->validate($rules);
+                // Excerpt validation messages
+                'excerpt.required' => 'Please provide a short description for your post.',
+                'excerpt.max' => 'The short description cannot exceed 510 characters.',
+
+                // Body validation messages
+                'body.required' => 'The post content cannot be empty.',
+
+                // Category validation messages
+                'category_id.required' => 'Please select a category for your post.',
+                'category_id.integer' => 'Invalid category selection.',
+                'category_id.exists' => 'The selected category does not exist.',
+
+                // Image validation messages
+                'image_path.required' => 'Please upload a featured image for your post.',
+                'image_path.string' => 'Invalid image path.',
+
+                // Read time validation messages
+                'read_time.required' => 'Please specify the estimated reading time.',
+                'read_time.integer' => 'Reading time must be a number.',
+
+                // SEO Meta Title
+                'meta_title.max' => 'The SEO title cannot exceed 80 characters for optimal search engine display.',
+
+                // SEO Meta Description
+                'meta_description.max' => 'The SEO description cannot exceed 160 characters for optimal search engine display.',
+
+                // Focus Keyword
+                'focus_keyword.max' => 'The focus keyword cannot exceed 100 characters.',
+
+                // Image Alt Text
+                'image_alt.max' => 'The image alt text cannot exceed 255 characters.',
+
+                // Open Graph Title
+                'og_title.max' => 'The Open Graph title cannot exceed 80 characters.',
+
+                // Open Graph Description
+                'og_description.max' => 'The Open Graph description cannot exceed 160 characters.',
+
+                // Twitter Title
+                'twitter_title.max' => 'The Twitter card title cannot exceed 80 characters.',
+
+                // Twitter Description
+                'twitter_description.max' => 'The Twitter card description cannot exceed 160 characters.',
+
+                // Scheduling
+                'scheduled_at.date' => 'Please enter a valid date and time for scheduling.',
+                'scheduled_at.after' => 'The scheduled date must be in the future.',
+
+                // Expiration
+                'expires_at.date' => 'Please enter a valid expiration date.',
+            ]);
 
             $post = Post::create([
                 'user_id' => auth()->id(),
@@ -546,14 +514,14 @@ class PostController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please fix the validation errors',
+                'message' => 'Please correct the errors below and try again.',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             \Log::error('Post creation failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while creating the post'
+                'message' => 'We encountered an error while creating your post. Please try again.'
             ], 500);
         }
     }
@@ -584,6 +552,13 @@ class PostController extends Controller
             'twitter_title' => 'nullable|string|max:80',
             'twitter_description' => 'nullable|string|max:160',
             'twitter_image' => 'nullable|string',
+        ], [
+            'title.max' => 'Title is too long (max 255 characters).',
+            'excerpt.max' => 'Short description is too long (max 510 characters).',
+            'meta_title.max' => 'SEO title is too long (max 80 characters).',
+            'meta_description.max' => 'SEO description is too long (max 160 characters).',
+            'focus_keyword.max' => 'Focus keyword is too long (max 100 characters).',
+            'image_alt.max' => 'Image alt text is too long (max 255 characters).',
         ]);
 
         if ($request->saved_post_id) {
@@ -655,10 +630,15 @@ class PostController extends Controller
             'update_url' => true
         ]);
     }
+
     public function uploadImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|max:5120', // 5MB
+            'image' => 'required|image|max:1024',
+        ], [
+            'image.required' => 'Please select an image to upload.',
+            'image.image' => 'The file must be an image (jpg, jpeg, png, gif, svg, or webp).',
+            'image.max' => 'The image size cannot exceed 1MB.',
         ]);
 
         $imageStorageService = app(\App\Services\ImageStorageService::class);
@@ -670,10 +650,15 @@ class PostController extends Controller
             'path' => $uploadedPath
         ]);
     }
+
     public function uploadEditorImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|max:5120',
+            'image' => 'required|image|max:1024',
+        ], [
+            'image.required' => 'Please select an image to upload.',
+            'image.image' => 'The file must be an image (jpg, jpeg, png, gif, svg, or webp).',
+            'image.max' => 'The image size cannot exceed 1MB.',
         ]);
 
         $imageStorageService = app(\App\Services\ImageStorageService::class);
@@ -685,6 +670,7 @@ class PostController extends Controller
             'path' => $uploadedPath
         ]);
     }
+
     public function browseImages()
     {
         try {
@@ -709,6 +695,7 @@ class PostController extends Controller
             ]);
         }
     }
+
     public function browseEditorImages()
     {
         try {
@@ -763,13 +750,14 @@ class PostController extends Controller
             'twitter_title' => 'nullable|string|max:80',
             'twitter_description' => 'nullable|string|max:160',
             'twitter_image' => 'nullable|string',
+        ], [
+            'title.max' => 'Title is too long (max 255 characters).',
+            'excerpt.max' => 'Short description is too long (max 510 characters).',
+            'meta_title.max' => 'SEO title is too long (max 80 characters).',
+            'meta_description.max' => 'SEO description is too long (max 160 characters).',
         ]);
 
-        // Store draft in history or temp table (your choice)
-        // Option 1: Update the post directly (simpler)
-        // Option 2: Save to HistoryPost with special flag (better for rollback)
-
-        // Using Option 2 - save to history:
+        // Store draft in history
         \App\Models\HistoryPost::updateOrCreate(
             [
                 'post_id' => $id,
@@ -802,6 +790,7 @@ class PostController extends Controller
             'message' => 'Auto-saved at ' . now()->format('H:i:s')
         ]);
     }
+
     public function edit($id)
     {
         if (!auth()->user()->can('post-edit')) {
@@ -836,12 +825,12 @@ class PostController extends Controller
         if ($post->user_id != auth()->id() && !auth()->user()->hasPermissionTo('post-super-list')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized action.'
+                'message' => 'You are not authorized to edit this post.'
             ], 403);
         }
 
         try {
-            $rules = [
+            $validated = $request->validate([
                 'title' => 'required|max:255|unique:posts,title,' . $id,
                 'excerpt' => 'required|max:510',
                 'body' => 'required',
@@ -863,11 +852,48 @@ class PostController extends Controller
                 'scheduled_at' => 'nullable|date|after:now',
                 'use_expiration' => 'boolean',
                 'expires_at' => 'nullable|date',
-            ];
+            ], [
+                // Title validation messages
+                'title.required' => 'Please enter a post title.',
+                'title.max' => 'The post title cannot exceed 255 characters.',
+                'title.unique' => 'A post with this title already exists. Please choose a different title.',
 
-            $validated = $request->validate($rules);
+                // Excerpt validation messages
+                'excerpt.required' => 'Please provide a short description for your post.',
+                'excerpt.max' => 'The short description cannot exceed 510 characters.',
 
-            // --- 1. Build changelog by comparing old vs new ---
+                // Body validation messages
+                'body.required' => 'The post content cannot be empty.',
+
+                // Category validation messages
+                'category_id.required' => 'Please select a category for your post.',
+                'category_id.integer' => 'Invalid category selection.',
+                'category_id.exists' => 'The selected category does not exist.',
+
+                // Image validation messages
+                'image_path.required' => 'Please upload a featured image for your post.',
+
+                // Read time validation messages
+                'read_time.required' => 'Please specify the estimated reading time.',
+                'read_time.integer' => 'Reading time must be a number.',
+
+                // SEO validation messages
+                'meta_title.max' => 'The SEO title cannot exceed 80 characters.',
+                'meta_description.max' => 'The SEO description cannot exceed 160 characters.',
+                'focus_keyword.max' => 'The focus keyword cannot exceed 100 characters.',
+                'image_alt.max' => 'The image alt text cannot exceed 255 characters.',
+                'og_title.max' => 'The Open Graph title cannot exceed 80 characters.',
+                'og_description.max' => 'The Open Graph description cannot exceed 160 characters.',
+                'twitter_title.max' => 'The Twitter card title cannot exceed 80 characters.',
+                'twitter_description.max' => 'The Twitter card description cannot exceed 160 characters.',
+
+                // Scheduling validation messages
+                'scheduled_at.date' => 'Please enter a valid date and time for scheduling.',
+                'scheduled_at.after' => 'The scheduled date must be in the future.',
+                'expires_at.date' => 'Please enter a valid expiration date.',
+            ]);
+
+            // Build changelog by comparing old vs new
             $changelog = [];
 
             if ($post->title !== $validated['title']) $changelog[] = 'Title';
@@ -877,7 +903,7 @@ class PostController extends Controller
             if ($post->image_path !== $validated['image_path']) $changelog[] = 'Image';
             if ($post->is_published !== (bool)($request->is_published ?? false)) $changelog[] = 'Visibility';
 
-            // --- 2. Snapshot the PREVIOUS version into HistoryPost (only if something changed) ---
+            // Snapshot the PREVIOUS version into HistoryPost (only if something changed)
             if (!empty($changelog)) {
                 \App\Models\HistoryPost::create([
                     'post_id' => $post->id,
@@ -897,7 +923,7 @@ class PostController extends Controller
                 ]);
             }
 
-            // --- 3. Update the post ---
+            // Update the post
             $post->update([
                 'title' => $validated['title'],
                 'excerpt' => $validated['excerpt'],
@@ -924,7 +950,7 @@ class PostController extends Controller
                 'twitter_image' => $validated['twitter_image'],
             ]);
 
-            // --- 4. Notify original author if edited by someone else ---
+            // Notify original author if edited by someone else
             if (auth()->id() !== $post->user_id) {
                 $post->user->notify(new PostNotification(
                     'INFO',
@@ -933,7 +959,7 @@ class PostController extends Controller
                 ));
             }
 
-            // --- 5. Delete the auto-save draft if it exists ---
+            // Delete the auto-save draft if it exists
             \App\Models\HistoryPost::where('post_id', $post->id)
                 ->where('additional_info', 2)
                 ->delete();
@@ -947,14 +973,14 @@ class PostController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please fix the validation errors',
+                'message' => 'Please correct the errors below and try again.',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             \Log::error('Post update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while updating the post'
+                'message' => 'We encountered an error while updating your post. Please try again.'
             ], 500);
         }
     }
@@ -1011,13 +1037,16 @@ class PostController extends Controller
         if (!auth()->user()->can('post-edit')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized'
+                'message' => 'You do not have permission to delete images.'
             ], 403);
         }
 
         $request->validate([
             'images' => 'required|array',
             'images.*' => 'string'
+        ], [
+            'images.required' => 'No images selected for cleanup.',
+            'images.array' => 'Invalid image data format.',
         ]);
 
         $imageStorageService = app(\App\Services\ImageStorageService::class);
@@ -1025,7 +1054,6 @@ class PostController extends Controller
 
         foreach ($request->images as $imagePath) {
             try {
-                // Use safeDelete to only delete if not used elsewhere
                 $deleted = $imageStorageService->safeDelete($imagePath);
                 if ($deleted) {
                     $deletedCount++;
@@ -1048,13 +1076,14 @@ class PostController extends Controller
     {
 
     }
+
     public function show()
     {
 
     }
+
     public function analytics()
     {
 
     }
-
 }
