@@ -150,13 +150,11 @@
                     })
                     .then(data => {
                         if (data.success) {
-                            showToast(data.message, 'success');
                             window.location.href = '{{ route("admin.categories.index") }}';
                         }
                     })
                     .catch(error => {
                         if (error.errors) {
-                            showToast('Please fix the validation errors', 'error');
                             Object.keys(error.errors).forEach(key => {
                                 const errorEl = document.getElementById(key + 'Error');
                                 if (errorEl) {
