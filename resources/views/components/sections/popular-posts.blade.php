@@ -27,7 +27,7 @@
                             <div role="listitem">
                                 <a href="{{ route('post.show', $featuredPost->slug) }}" class="latest-top">
                                     <div class="latest-img">
-                                        <img src="{{ $featuredPost->image_path }}"
+                                        <img src="{{ asset($featuredPost->image_path) }}"
                                              loading="lazy"
                                              alt="{{ $featuredPost->image_alt ? $featuredPost->image_alt : $featuredPost->title }}"
                                              class="cover-image" />
@@ -81,7 +81,7 @@
                                             </div>
                                         </div>
                                         <div class="latest-thumb">
-                                            <img src="{{ $post->image_path }}"
+                                            <img src="{{ asset($post->image_path) }}"
                                                  loading="lazy"
                                                  alt="{{ $post->image_alt ? $post->image_alt : $post->title }}"
                                                  class="cover-image" />

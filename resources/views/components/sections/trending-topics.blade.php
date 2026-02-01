@@ -17,7 +17,7 @@
                     </div>
                 @else
                     <div role="list" class="hero-content">
-                        @foreach($posts->take(4) as $post)
+                        @foreach($posts->skip(3)->take(4) as $post)
                             <div role="listitem" class="news-list">
                                 <a href="{{ route('post.show', $post->slug) }}" class="hero-list inline-block">
                                     @if($post->category)
@@ -39,10 +39,10 @@
         <!-- Featured Posts Grid - Next 3 posts (5th, 6th, 7th) -->
         <div>
             <div role="list" class="hero-info">
-                @foreach($posts->skip(4)->take(3) as $post)
+                @foreach($posts->take(4)  as $post)
                     <div class="hero-data" role="listitem">
                         @if($post->image_path)
-                            <img src="{{ $post->image_path }}"
+                            <img src="{{ asset($post->image_path) }}"
                                  class="absolute inset-0 size-full object-cover object-center"
                                  alt="{{ $post->image_alt ? $post->image_alt : $post->title }}">
                         @else

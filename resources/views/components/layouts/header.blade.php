@@ -39,6 +39,7 @@
                     <!-- Collapse Button -->
                     <div class="md:hidden flex gap-4">
                         <button type="button"
+                                aria-haspopup="dialog" aria-expanded="false" aria-controls="hs-scale-animation-modal" data-hs-overlay="#hs-scale-animation-modal"
                                 class="flex cursor-pointer items-center justify-center rounded-full text-body d05xb focus:outline-hidden">
                             <svg class="block text-body size-5" xmlns="http://www.w3.org/2000/svg" width="24"
                                  height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -213,7 +214,7 @@
 
                                                                     <div class="absolute pe-2 z-20 flex items-center end-0 inset-y-0">
                                                                         <div class="flex items-center gap-1">
-                                                                           {{-- <button type="button"
+                                                                            <button type="button"
                                                                                     class="text-white font-medium text-sm bg-secondary/90 rounded-full flex justify-center shrink-0 size-7 cursor-pointer items-center disabled:opacity-50 disabled:pointer-events-none focus:outline-hidden ukj8s">
                                                                                 <svg class="shrink-0 size-3.5 block" xmlns="http://www.w3.org/2000/svg"
                                                                                      width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -223,7 +224,7 @@
                                                                                     <path d="m12 5 7 7-7 7"></path>
                                                                                 </svg>
                                                                                 <span class="sr-only">Search</span>
-                                                                            </button>--}}
+                                                                            </button>
                                                                         </div>
                                                                     </div>
                                                                 </div>

@@ -30,7 +30,7 @@
                                     <a href="{{ route('post.show', $post->slug) }}" class="news-right">
                                         <div class="news-image">
                                             <img
-                                                src="{{ $post->image_path ? $post->image_path : asset('images/default-post.jpg') }}"
+                                                src="{{ $post->image_path ? asset($post->image_path) : asset('images/default-post.jpg') }}"
                                                 loading="lazy"
                                                 alt="{{ $post->title }}"
                                                 sizes="(max-width: 479px) 92vw, (max-width: 767px) 46vw, (max-width: 991px) 47vw, 29vw"
@@ -88,7 +88,7 @@
                                                         >
                                                             @if($currentAd->image_path)
                                                                 <img
-                                                                    src="{{ $currentAd->image_path }}"
+                                                                    src="{{ asset($currentAd->image_path) }}"
                                                                     alt="{{ $currentAd->title }}"
                                                                     class="w-full h-auto rounded-sm transition-transform duration-300 group-hover:scale-105 object-cover"
                                                                 >

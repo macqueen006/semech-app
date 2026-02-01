@@ -26,7 +26,7 @@
                                 <div role="listitem">
                                     <a href="{{ route('post.show', $highlight->post->slug) }}" class="pick-block">
                                         <div class="pick-img">
-                                            <img src="{{ $highlight->post->image_path }}"
+                                            <img src="{{ asset($highlight->post->image_path) }}"
                                                  loading="lazy"
                                                  alt="{{ $highlight->post->image_alt ? $highlight->post->image_alt : $highlight->post->title }}"
                                                  class="cover-image" />
@@ -55,7 +55,7 @@
                                 <div role="listitem">
                                     <a href="{{ route('post.show', $featuredPost->post->slug) }}" class="news-right">
                                         <div class="pick-right">
-                                            <img src="{{ $featuredPost->post->image_path }}"
+                                            <img src="{{ asset($featuredPost->post->image_path) }}"
                                                  loading="lazy"
                                                  alt="{{ $featuredPost->post->image_alt ? $featuredPost->post->image_alt : $featuredPost->post->title }}"
                                                  class="cover-image" />

@@ -62,7 +62,7 @@
 
                             @if($post->image_path)
                                 <a href="{{ route('post.show', $post->slug) }}" class="block overflow-hidden">
-                                    <img src="{{ $post->image_path }}"
+                                    <img src="{{ asset($post->image_path) }}"
                                          alt="{{ $post->title }}"
                                          class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300">
                                 </a>

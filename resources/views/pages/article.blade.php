@@ -98,7 +98,7 @@
 
                     @if($post->image_path)
                         <div class="news-main aspect-[3/1.8] relative overflow-hidden rounded-[6px] bg-background">
-                            <img src="{{ $post->image_path }}"
+                            <img src="{{ asset($post->image_path) }}"
                                  loading="eager"
                                  alt="{{ $post->image_alt ? $post->image_alt : $post->title }}"
                                  class="cover-image"/>
