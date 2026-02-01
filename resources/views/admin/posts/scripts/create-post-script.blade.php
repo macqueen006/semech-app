@@ -5,6 +5,7 @@
         // ========================================
         let uploadedEditorImages = [];
         let currentFeaturedImagePath = document.getElementById('imagePath').value || '';
+        let hasUnsavedChanges = false;
 
         // ========================================
         // QUILL EDITOR SETUP
@@ -50,6 +51,7 @@
         }
 
         quill.on('text-change', function(delta, oldDelta, source) {
+            hasUnsavedChanges = true;
             document.getElementById('body').value = quill.root.innerHTML;
             updateWordCount();
         });
@@ -114,6 +116,37 @@
                 uploadedEditorImages = currentImages;
             }
         }
+
+        // ========================================
+        // PAGE ABANDON PROTECTION
+        // ========================================
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                // Collect all uploaded images for cleanup
+                const allImages = [...uploadedEditorImages];
+                if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
+                    allImages.push(currentFeaturedImagePath);
+                }
+
+                if (allImages.length > 0) {
+                    // Use sendBeacon for reliable cleanup on page unload
+                    const cleanupData = JSON.stringify({
+                        _token: '{{ csrf_token() }}',
+                        images: allImages
+                    });
+
+                    navigator.sendBeacon(
+                        '{{ route('admin.posts.cleanup-images') }}',
+                        new Blob([cleanupData], {type: 'application/json'})
+                    );
+                }
+
+                // Show warning to user
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
 
         // ========================================
         // SEO AUTO-FILL FUNCTIONS
@@ -287,6 +320,9 @@
             e.preventDefault();
             clearInterval(autoSaveInterval);
 
+            // Clear unsaved changes flag (post is being saved)
+            hasUnsavedChanges = false;
+
             cleanupOrphanImages();
             autoFillSeoFields();
 
@@ -443,12 +479,16 @@
                 .then(data => {
                     if (data.success) {
                         // Delete old featured image if exists
-                        if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/storage/')) {
+                        if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                             deleteImageFromStorage(currentFeaturedImagePath);
+                            // Remove from tracking array
+                            uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
                         }
 
-                        // Update with new image
+                        // Update with new image and track it
                         currentFeaturedImagePath = data.path;
+                        uploadedEditorImages.push(data.path);  // ✅ TRACK FEATURED IMAGE
+
                         imagePath.value = data.path;
                         imagePreviewImg.src = data.path;
                         imagePreview.classList.remove('hidden');
@@ -480,8 +520,9 @@
                 }
 
                 // Delete old featured image if it's from storage
-                if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/storage/')) {
+                if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                     deleteImageFromStorage(currentFeaturedImagePath);
+                    uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
                 }
 
                 currentFeaturedImagePath = url;
@@ -499,8 +540,9 @@
                 const pathToDelete = currentFeaturedImagePath || imagePath.value;
 
                 // Only delete if it's a storage path (not external URL)
-                if (pathToDelete && pathToDelete.startsWith('/storage/')) {
+                if (pathToDelete && pathToDelete.startsWith('/images/')) {
                     deleteImageFromStorage(pathToDelete);
+                    uploadedEditorImages = uploadedEditorImages.filter(img => img !== pathToDelete);
                 } else {
                     showImageMessage('Image removed', 'success');
                 }
@@ -527,7 +569,7 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ images: path })
+                body: JSON.stringify({ images: [path] })
             })
                 .then(response => response.json())
                 .then(data => {
@@ -890,11 +932,14 @@
                             document.querySelectorAll('.browse-image').forEach(el => {
                                 el.addEventListener('click', function() {
                                     // Delete old featured image if exists
-                                    if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/storage/')) {
+                                    if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                                         deleteImageFromStorage(currentFeaturedImagePath);
+                                        uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
                                     }
 
                                     currentFeaturedImagePath = this.dataset.path;
+                                    uploadedEditorImages.push(this.dataset.path);  // ✅ TRACK FEATURED IMAGE
+
                                     imagePath.value = this.dataset.path;
                                     imagePreviewImg.src = this.dataset.path;
                                     imagePreview.classList.remove('hidden');
@@ -1044,6 +1089,7 @@
 
         if (titleInput) {
             titleInput.addEventListener('input', function() {
+                hasUnsavedChanges = true;
                 updateCharCount('title', this.value.length);
                 if (autoFillSeo) {
                     autoFillSeoFields();
@@ -1054,6 +1100,7 @@
 
         if (excerptInput) {
             excerptInput.addEventListener('input', function() {
+                hasUnsavedChanges = true;
                 updateCharCount('excerpt', this.value.length);
                 if (autoFillSeo) {
                     autoFillSeoFields();

@@ -6,7 +6,8 @@
         // STATE MANAGEMENT
         // ========================================
         let uploadedEditorImages = @json($post->uploadedEditorImages ?? []);
-
+        let currentFeaturedImagePath = document.getElementById('imagePath').value || '';
+        let hasUnsavedChanges = false;
 
         // ========================================
         // QUILL EDITOR SETUP
@@ -52,6 +53,7 @@
         }
 
         quill.on('text-change', function (delta, oldDelta, source) {
+            hasUnsavedChanges = true;
             document.getElementById('body').value = quill.root.innerHTML;
             updateWordCount();
         });
@@ -79,7 +81,6 @@
             tempDiv.innerHTML = html;
             const images = tempDiv.querySelectorAll('img');
             return Array.from(images).map(img => {
-                // Extract relative path if it's a full URL
                 try {
                     const url = new URL(img.src);
                     return url.pathname;
@@ -119,6 +120,37 @@
         }
 
         // ========================================
+        // PAGE ABANDON PROTECTION
+        // ========================================
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                // Collect all uploaded images for cleanup
+                const allImages = [...uploadedEditorImages];
+                if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
+                    allImages.push(currentFeaturedImagePath);
+                }
+
+                if (allImages.length > 0) {
+                    // Use sendBeacon for reliable cleanup on page unload
+                    const cleanupData = JSON.stringify({
+                        _token: '{{ csrf_token() }}',
+                        images: allImages
+                    });
+
+                    navigator.sendBeacon(
+                        '{{ route('admin.posts.cleanup-images') }}',
+                        new Blob([cleanupData], {type: 'application/json'})
+                    );
+                }
+
+                // Show warning to user
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+
+        // ========================================
         // SEO AUTO-FILL FUNCTIONS
         // ========================================
         const autoFillSeoCheckbox = document.getElementById('autoFillSeo');
@@ -141,18 +173,16 @@
             const metaTitleInput = document.getElementById('metaTitle');
             const metaDescriptionInput = document.getElementById('metaDescription');
 
-            // ALWAYS fill when checkbox is checked (like Livewire wire:model.live)
             if (title) {
-                metaTitleInput.value = title.substring(0, 80); // Changed from 57 to 80
+                metaTitleInput.value = title.substring(0, 80);
                 updateCharCount('metaTitle', metaTitleInput.value.length);
             }
 
             if (excerpt) {
-                metaDescriptionInput.value = excerpt.substring(0, 160); // Changed from 157 to 160
+                metaDescriptionInput.value = excerpt.substring(0, 160);
                 updateCharCount('metaDescription', metaDescriptionInput.value.length);
             }
 
-            // Auto-fill OG fields
             const ogTitle = document.getElementById('ogTitle');
             const ogDescription = document.getElementById('ogDescription');
             const ogImage = document.getElementById('ogImage');
@@ -169,7 +199,6 @@
                 ogImage.value = imagePath;
             }
 
-            // Auto-fill Twitter fields
             const twitterTitle = document.getElementById('twitterTitle');
             const twitterDescription = document.getElementById('twitterDescription');
             const twitterImage = document.getElementById('twitterImage');
@@ -208,7 +237,7 @@
                 if (previewTitle) previewTitle.textContent = metaTitleInput.value || title;
                 if (previewUrl) previewUrl.textContent = '{{ url('/post/') }}/' + slugify(title);
                 if (previewDescription) {
-                    previewDescription.textContent = (metaDescriptionInput.value || excerpt).substring(0, 157);
+                    previewDescription.textContent = (metaDescriptionInput.value || excerpt).substring(0, 160);
                 }
             } else {
                 if (seoPreview) seoPreview.classList.add('hidden');
@@ -289,7 +318,6 @@
                         if (data.success && data.has_auto_save) {
                             const saved = data.auto_save;
 
-                            // Restore fields
                             document.getElementById('title').value = saved.title || '';
                             document.getElementById('excerpt').value = saved.excerpt || '';
                             document.getElementById('body').value = saved.body || '';
@@ -297,15 +325,14 @@
                             document.getElementById('category_id').value = saved.category_id || '';
                             document.getElementById('readTime').value = saved.read_time || 1;
 
-                            // Restore Quill editor
                             if (saved.body && window.quillEditor) {
                                 window.quillEditor.root.innerHTML = saved.body;
                                 uploadedEditorImages = extractImagesFromBody(saved.body);
                                 updateWordCount();
                             }
 
-                            // Restore featured image preview
                             if (saved.image_path) {
+                                currentFeaturedImagePath = saved.image_path;
                                 const imagePreview = document.getElementById('imagePreview');
                                 const imagePreviewImg = document.getElementById('imagePreviewImg');
                                 if (imagePreview && imagePreviewImg) {
@@ -314,7 +341,6 @@
                                 }
                             }
 
-                            // Restore SEO fields
                             setFieldIfExists('metaTitle', saved.meta_title);
                             setFieldIfExists('metaDescription', saved.meta_description);
                             setFieldIfExists('focusKeyword', saved.focus_keyword);
@@ -326,7 +352,6 @@
                             setFieldIfExists('twitterDescription', saved.twitter_description);
                             setFieldIfExists('twitterImage', saved.twitter_image);
 
-                            // Restore scheduling
                             if (saved.scheduled_at) {
                                 const useScheduling = document.getElementById('useScheduling');
                                 const scheduledAt = document.getElementById('scheduledAt');
@@ -348,19 +373,15 @@
                                     expiresAt.dispatchEvent(new Event('change'));
                                 }
                                 const expirationInputs = document.getElementById('expirationInputs');
-                                if (expirationInputs) expirationInputs.classList.add('hidden');
+                                if (expirationInputs) expirationInputs.classList.remove('hidden');
                             }
 
-                            // Update character counts
                             updateCharCount('title', saved.title ? saved.title.length : 0);
                             updateCharCount('excerpt', saved.excerpt ? saved.excerpt.length : 0);
                             updateCharCount('metaTitle', saved.meta_title ? saved.meta_title.length : 0);
                             updateCharCount('metaDescription', saved.meta_description ? saved.meta_description.length : 0);
-
-                            // Update SEO preview
                             updateSeoPreview();
 
-                            // Hide warning banner
                             document.getElementById('autoSaveWarning').classList.add('hidden');
                             showMessage('Auto-saved version loaded.', 'success');
                         }
@@ -372,7 +393,6 @@
             });
         }
 
-        // Reject / discard auto-save
         const rejectAutoSaveBtn = document.getElementById('rejectAutoSaveBtn');
         if (rejectAutoSaveBtn) {
             rejectAutoSaveBtn.addEventListener('click', function () {
@@ -395,7 +415,6 @@
             });
         }
 
-        // Helper: set field value if element exists
         function setFieldIfExists(id, value) {
             const el = document.getElementById(id);
             if (el && value !== null && value !== undefined) {
@@ -433,7 +452,6 @@
                 });
         }
 
-        // Manual "Save Draft" button
         const saveDraftBtn = document.getElementById('saveDraftBtn');
         if (saveDraftBtn) {
             saveDraftBtn.addEventListener('click', function () {
@@ -447,6 +465,9 @@
         document.getElementById('postForm').addEventListener('submit', function (e) {
             e.preventDefault();
             clearInterval(autoSaveInterval);
+
+            // Clear unsaved changes flag (post is being saved)
+            hasUnsavedChanges = false;
 
             cleanupOrphanImages();
             autoFillSeoFields();
@@ -604,12 +625,22 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        // Delete old featured image if exists
+                        if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
+                            deleteImageFromStorage(currentFeaturedImagePath);
+                            uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
+                        }
+
+                        // Update with new image and track it
+                        currentFeaturedImagePath = data.path;
+                        uploadedEditorImages.push(data.path);  // ✅ TRACK FEATURED IMAGE
+
                         imagePath.value = data.path;
                         imagePreviewImg.src = data.path;
                         imagePreview.classList.remove('hidden');
                         cancelImageUpload();
                         showImageMessage(data.message, 'success');
-                        autoFillSeoFields(); // Auto-fill OG/Twitter images
+                        autoFillSeoFields();
                     }
                 })
                 .catch(error => {
@@ -633,11 +664,19 @@
                     showImageMessage('Please enter an image URL', 'error');
                     return;
                 }
+
+                // Delete old featured image if it's from storage
+                if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
+                    deleteImageFromStorage(currentFeaturedImagePath);
+                    uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
+                }
+
+                currentFeaturedImagePath = url;
                 imagePath.value = url;
                 imagePreviewImg.src = url;
                 imagePreview.classList.remove('hidden');
                 showImageMessage('Image URL set successfully!', 'success');
-                autoFillSeoFields(); // Auto-fill OG/Twitter images
+                autoFillSeoFields();
             });
         }
 
@@ -646,8 +685,9 @@
                 const pathToDelete = currentFeaturedImagePath || imagePath.value;
 
                 // Only delete if it's a storage path (not external URL)
-                if (pathToDelete && pathToDelete.startsWith('/storage/')) {
+                if (pathToDelete && pathToDelete.startsWith('/images/')) {
                     deleteImageFromStorage(pathToDelete);
+                    uploadedEditorImages = uploadedEditorImages.filter(img => img !== pathToDelete);
                 } else {
                     showImageMessage('Image removed', 'success');
                 }
@@ -674,7 +714,7 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ images: path })
+                body: JSON.stringify({ images: [path] })
             })
                 .then(response => response.json())
                 .then(data => {
@@ -1036,12 +1076,21 @@
 
                             document.querySelectorAll('.browse-image').forEach(el => {
                                 el.addEventListener('click', function () {
+                                    // Delete old featured image if exists
+                                    if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
+                                        deleteImageFromStorage(currentFeaturedImagePath);
+                                        uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
+                                    }
+
+                                    currentFeaturedImagePath = this.dataset.path;
+                                    uploadedEditorImages.push(this.dataset.path);  // ✅ TRACK FEATURED IMAGE
+
                                     imagePath.value = this.dataset.path;
                                     imagePreviewImg.src = this.dataset.path;
                                     imagePreview.classList.remove('hidden');
                                     closeBrowseImagesModal();
                                     showImageMessage('Image selected from storage!', 'success');
-                                    autoFillSeoFields(); // Auto-fill OG/Twitter images
+                                    autoFillSeoFields();
                                 });
                             });
                         }
@@ -1185,9 +1234,10 @@
 
         if (titleInput) {
             titleInput.addEventListener('input', function () {
+                hasUnsavedChanges = true;
                 updateCharCount('title', this.value.length);
                 if (autoFillSeo) {
-                    autoFillSeoFields(); // Call this every time when checkbox is checked
+                    autoFillSeoFields();
                 }
                 updateSeoPreview();
             });
@@ -1195,15 +1245,15 @@
 
         if (excerptInput) {
             excerptInput.addEventListener('input', function () {
+                hasUnsavedChanges = true;
                 updateCharCount('excerpt', this.value.length);
                 if (autoFillSeo) {
-                    autoFillSeoFields(); // Call this every time when checkbox is checked
+                    autoFillSeoFields();
                 }
                 updateSeoPreview();
             });
         }
 
-        // Add listeners for other SEO fields
         const seoFields = [
             'focusKeyword', 'imageAlt', 'ogTitle', 'ogDescription',
             'ogImage', 'twitterTitle', 'twitterDescription', 'twitterImage'
@@ -1220,7 +1270,6 @@
             }
         });
 
-        // Initialize character counts on load
         updateCharCount('title', titleInput ? titleInput.value.length : 0);
         updateCharCount('excerpt', excerptInput ? excerptInput.value.length : 0);
         if (metaTitleInput) updateCharCount('metaTitle', metaTitleInput.value.length);
