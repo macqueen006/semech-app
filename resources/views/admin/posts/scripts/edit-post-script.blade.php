@@ -5,7 +5,7 @@
         // ========================================
         // STATE MANAGEMENT
         // ========================================
-        let uploadedEditorImages = @json($post->uploadedEditorImages ?? []);
+        let uploadedEditorImages = []; // Only images inserted into editor
         let currentFeaturedImagePath = document.getElementById('imagePath').value || '';
         let hasUnsavedChanges = false;
 
@@ -93,7 +93,11 @@
         function cleanupOrphanImages() {
             const bodyContent = quill.root.innerHTML;
             const currentImages = extractImagesFromBody(bodyContent);
-            const orphanedImages = uploadedEditorImages.filter(img => !currentImages.includes(img));
+
+            // ✅ Only cleanup orphaned EDITOR images (exclude featured image)
+            const orphanedImages = uploadedEditorImages.filter(img =>
+                !currentImages.includes(img) && img !== currentFeaturedImagePath
+            );
 
             if (orphanedImages.length > 0) {
                 fetch('{{ route('admin.posts.cleanup-images') }}', {
@@ -109,13 +113,13 @@
                     .then(data => {
                         if (data.success) {
                             console.log('Cleaned up ' + orphanedImages.length + ' orphaned images');
+                            // Update tracking to only include current editor images (exclude featured)
+                            uploadedEditorImages = currentImages.filter(img => img !== currentFeaturedImagePath);
                         }
                     })
                     .catch(error => {
                         console.error('Cleanup error:', error);
                     });
-
-                uploadedEditorImages = currentImages;
             }
         }
 
@@ -130,6 +134,7 @@
                     allImages.push(currentFeaturedImagePath);
                 }
 
+                // Only cleanup if there are actually images to clean
                 if (allImages.length > 0) {
                     // Use sendBeacon for reliable cleanup on page unload
                     const cleanupData = JSON.stringify({
@@ -502,16 +507,23 @@
                     if (result.status === 422) {
                         showMessage('Please fix the errors below', 'error');
                         displayValidationErrors(result.data.errors);
+                        updateBtn.disabled = false;
+                        updateBtn.textContent = originalText;
                     } else if (result.ok && result.data.success) {
                         showMessage(result.data.message, 'success');
+
+                        // ✅ CLEAR IMAGE TRACKING - Don't delete images on redirect
+                        uploadedEditorImages = [];
+                        currentFeaturedImagePath = '';
+
                         setTimeout(() => {
                             window.location.href = result.data.redirect;
                         }, 1500);
                     } else {
                         showMessage(result.data.message || 'An error occurred', 'error');
+                        updateBtn.disabled = false;
+                        updateBtn.textContent = originalText;
                     }
-                    updateBtn.disabled = false;
-                    updateBtn.textContent = originalText;
                 })
                 .catch(error => {
                     console.error('Update error:', error);
@@ -628,12 +640,10 @@
                         // Delete old featured image if exists
                         if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                             deleteImageFromStorage(currentFeaturedImagePath);
-                            uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
                         }
 
-                        // Update with new image and track it
+                        // ✅ Update with new image (DON'T add to uploadedEditorImages)
                         currentFeaturedImagePath = data.path;
-                        uploadedEditorImages.push(data.path);  // ✅ TRACK FEATURED IMAGE
 
                         imagePath.value = data.path;
                         imagePreviewImg.src = data.path;
@@ -668,10 +678,11 @@
                 // Delete old featured image if it's from storage
                 if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                     deleteImageFromStorage(currentFeaturedImagePath);
-                    uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
                 }
 
+                // ✅ Set new featured image (DON'T add to uploadedEditorImages)
                 currentFeaturedImagePath = url;
+
                 imagePath.value = url;
                 imagePreviewImg.src = url;
                 imagePreview.classList.remove('hidden');
@@ -687,7 +698,6 @@
                 // Only delete if it's a storage path (not external URL)
                 if (pathToDelete && pathToDelete.startsWith('/images/')) {
                     deleteImageFromStorage(pathToDelete);
-                    uploadedEditorImages = uploadedEditorImages.filter(img => img !== pathToDelete);
                 } else {
                     showImageMessage('Image removed', 'success');
                 }
@@ -1079,11 +1089,10 @@
                                     // Delete old featured image if exists
                                     if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                                         deleteImageFromStorage(currentFeaturedImagePath);
-                                        uploadedEditorImages = uploadedEditorImages.filter(img => img !== currentFeaturedImagePath);
                                     }
 
+                                    // ✅ Set as featured image (DON'T add to uploadedEditorImages)
                                     currentFeaturedImagePath = this.dataset.path;
-                                    uploadedEditorImages.push(this.dataset.path);  // ✅ TRACK FEATURED IMAGE
 
                                     imagePath.value = this.dataset.path;
                                     imagePreviewImg.src = this.dataset.path;
