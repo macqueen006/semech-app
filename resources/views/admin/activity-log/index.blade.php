@@ -465,6 +465,10 @@
 
                 // Delete selected
                 deleteSelected.addEventListener('click', function () {
+                    if (selectedIds.length === 0) {
+                        showFlashMessage('Please select at least one activity to delete.', 'error');
+                        return;
+                    }
                     deleteCount.textContent = selectedIds.length;
                     deleteText.textContent = selectedIds.length === 1 ? 'activity' : 'activities';
                     deleteModal.classList.remove('hidden');
@@ -476,19 +480,65 @@
                 });
 
                 confirmDelete.addEventListener('click', function () {
+                    // Disable button to prevent double-clicks
+                    confirmDelete.disabled = true;
+                    confirmDelete.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Deleting...';
+
                     fetch('{{ route('admin.activity.bulk-delete') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ids: selectedIds})
+                        body: JSON.stringify({ ids: selectedIds })
                     })
-                        .then(response => response.json())
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(data => {
+                                    throw new Error(data.message || 'Failed to delete activities');
+                                });
+                            }
+                            return response.json();
+                        })
                         .then(data => {
                             if (data.success) {
-                                window.location.reload();
+                                deleteModal.classList.add('hidden');
+                                showFlashMessage(data.message, 'success');
+
+                                // Remove deleted rows with animation
+                                selectedIds.forEach(id => {
+                                    const row = document.querySelector(`[data-activity-id="${id}"]`);
+                                    if (row) {
+                                        row.style.opacity = '0';
+                                        row.style.transform = 'scale(0.95)';
+                                        row.style.transition = 'all 0.3s ease';
+                                        setTimeout(() => row.remove(), 300);
+                                    }
+                                });
+
+                                // Reset selection
+                                setTimeout(() => {
+                                    selectedIds.length = 0;
+                                    updateUI();
+
+                                    // If no rows left, reload page
+                                    if (document.querySelectorAll('.activity-row').length === selectedIds.length) {
+                                        setTimeout(() => window.location.reload(), 500);
+                                    }
+                                }, 400);
+                            } else {
+                                throw new Error(data.message || 'Failed to delete activities');
                             }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showFlashMessage(error.message || 'An error occurred while deleting activities', 'error');
+                            deleteModal.classList.add('hidden');
+                        })
+                        .finally(() => {
+                            confirmDelete.disabled = false;
+                            confirmDelete.innerHTML = 'Delete';
                         });
                 });
 
@@ -496,11 +546,29 @@
                 document.querySelectorAll('.view-activity').forEach(button => {
                     button.addEventListener('click', function () {
                         const activityId = this.dataset.id;
-                        fetch(`{{ url('admin/activity-log') }}/${activityId}`)
-                            .then(response => response.json())
+
+                        // Show loading state
+                        activityModalContent.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-2xl text-gray-400"></i></div>';
+                        activityModal.classList.remove('hidden');
+
+                        fetch(`{{ url('admin/activity-log') }}/${activityId}`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Failed to load activity details');
+                                }
+                                return response.json();
+                            })
                             .then(activity => {
                                 activityModalContent.innerHTML = renderActivityDetails(activity);
-                                activityModal.classList.remove('hidden');
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                activityModalContent.innerHTML = '<div class="text-center py-8 text-red-600">Failed to load activity details</div>';
                             });
                     });
                 });
@@ -595,6 +663,28 @@
                     }
 
                     return html;
+                }
+
+                function showFlashMessage(message, type) {
+                    const flashDiv = document.createElement('div');
+                    flashDiv.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+                        type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' : 'bg-red-100 border border-red-400 text-red-700'
+                    }`;
+                    flashDiv.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-gray-500 hover:text-gray-700">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+        `;
+                    document.body.appendChild(flashDiv);
+
+                    setTimeout(() => {
+                        flashDiv.style.opacity = '0';
+                        flashDiv.style.transition = 'opacity 0.3s ease';
+                        setTimeout(() => flashDiv.remove(), 300);
+                    }, 3000);
                 }
             });
         </script>

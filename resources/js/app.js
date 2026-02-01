@@ -47,7 +47,7 @@ class SearchModal {
         this.selectedType = 'all';
         this.isSearching = false;
         this.searchResults = [];
-        this.counts = { all: 0, posts: 0, categories: 0 };
+        this.counts = {all: 0, posts: 0, categories: 0};
         this.searchTimeout = null;
 
         this.init();
@@ -302,7 +302,7 @@ class SearchModal {
             const data = await response.json();
 
             this.searchResults = data.results || [];
-            this.counts = data.counts || { all: 0, posts: 0, categories: 0 };
+            this.counts = data.counts || {all: 0, posts: 0, categories: 0};
 
             this.updateCounts();
             this.displayResults();
@@ -341,7 +341,7 @@ class SearchModal {
         this.searchInput.value = '';
         this.selectedType = 'all';
         this.searchResults = [];
-        this.counts = { all: 0, posts: 0, categories: 0 };
+        this.counts = {all: 0, posts: 0, categories: 0};
         this.updateClearButton();
         this.updateCounts();
         this.setFilter('all');
@@ -510,6 +510,6 @@ class SearchModal {
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     new SearchModal();
 });

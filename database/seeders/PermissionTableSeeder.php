@@ -46,6 +46,7 @@ class PermissionTableSeeder extends Seeder
             'analytics-view',
             'analytics-export',
             'activity-log-view',
+            'activity-log-delete',
             'advertisement-list',
             'advertisement-create',
             'advertisement-edit',

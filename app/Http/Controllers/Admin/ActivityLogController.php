@@ -91,29 +91,83 @@ class ActivityLogController extends Controller
 
     public function bulkDelete(Request $request)
     {
-        Activity::whereIn('id', $request->ids)->delete();
-        return response()->json(['success' => true, 'message' => 'Selected activities deleted successfully.']);
+        if (!auth()->user()->can('activity-log-delete')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to delete activity logs.'
+            ], 403);
+        }
+
+        try {
+            $validated = $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer'
+            ]);
+
+            // Check if any records actually exist
+            $existingIds = Activity::whereIn('id', $validated['ids'])->pluck('id')->toArray();
+
+            if (empty($existingIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid activities found to delete.'
+                ], 404);
+            }
+
+            $count = Activity::whereIn('id', $existingIds)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$count} activity log(s) deleted successfully."
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Activity log bulk delete failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while deleting activity logs.'
+            ], 500);
+        }
     }
 
     public function show($id)
     {
-        $activity = Activity::with(['causer', 'subject'])->findOrFail($id);
+        try {
+            $activity = Activity::with(['causer', 'subject'])->findOrFail($id);
 
-        return response()->json([
-            'id' => $activity->id,
-            'description' => $activity->description,
-            'log_name' => $activity->log_name,
-            'subject_type' => $activity->subject_type,
-            'subject_type_basename' => class_basename($activity->subject_type),
-            'subject_id' => $activity->subject_id,
-            'created_at_formatted' => $activity->created_at->format('M d, Y H:i:s'),
-            'causer' => $activity->causer ? [
-                'firstname' => $activity->causer->firstname,
-                'lastname' => $activity->causer->lastname,
-                'email' => $activity->causer->email,
-                'image_path' => $activity->causer->image_path ? asset($activity->causer->image_path) : null,
-            ] : null,
-            'properties' => $activity->properties,
-        ]);
+            return response()->json([
+                'id' => $activity->id,
+                'description' => $activity->description,
+                'log_name' => $activity->log_name,
+                'subject_type' => $activity->subject_type,
+                'subject_type_basename' => class_basename($activity->subject_type),
+                'subject_id' => $activity->subject_id,
+                'created_at_formatted' => $activity->created_at->format('M d, Y H:i:s'),
+                'causer' => $activity->causer ? [
+                    'firstname' => $activity->causer->firstname,
+                    'lastname' => $activity->causer->lastname,
+                    'email' => $activity->causer->email,
+                    'image_path' => $activity->causer->image_path ? asset($activity->causer->image_path) : null,
+                ] : null,
+                'properties' => $activity->properties,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Activity log not found.'
+            ], 404);
+        } catch (\Exception $e) {
+            \Log::error('Activity log show failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while retrieving the activity log.'
+            ], 500);
+        }
     }
 }
