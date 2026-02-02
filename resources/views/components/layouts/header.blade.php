@@ -120,7 +120,7 @@
                                 Blog
                             </a>
 
-                            <a class="p-2 flex items-center text-sm {{ $currentRoute === 'south.west' ? 'text-secondary focus:text-secondary': '' }} text-body hover:text-gray-500 focus:outline-hidden focus:text-gray-500"
+                            <a class="p-2 flex items-center uppercase text-sm {{ $currentRoute === 'south.west' ? 'text-secondary focus:text-secondary': '' }} text-body hover:text-gray-500 focus:outline-hidden focus:text-gray-500"
                                href="{{route('south.west')}}">
                                 <svg class="shrink-0 size-4 me-3 md:me-2 block md:hidden"
                                      xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"

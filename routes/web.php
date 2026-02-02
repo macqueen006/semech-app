@@ -290,6 +290,9 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
         Route::get('/{id}/edit/history/{history_id}/show', [AdminPostHistoryController::class, 'show'])
             ->name('history.show')
             ->middleware('permission:post-list');
+        Route::post('/{id}/edit/history/{history_id}/revert', [AdminPostHistoryController::class, 'revert'])
+            ->name('history.revert')
+            ->middleware('permission:post-edit');
 
         Route::delete('/drafts/{id}', [AdminPostHistoryController::class, 'deleteDraft'])->name('drafts.delete');
     });

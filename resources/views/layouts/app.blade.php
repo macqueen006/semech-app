@@ -11,9 +11,12 @@
     @yield('meta')
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link href="https://api.fontshare.com/v2/css?f[]=switzer@200,300,400,500,600,800,900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{asset('favicon-96x96.png')}}" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" />
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}" />
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}" />
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     @stack('styles')
