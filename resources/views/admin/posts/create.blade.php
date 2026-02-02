@@ -21,7 +21,7 @@
 
                 <form id="postForm" class="max-w-4xl">
                     @csrf
-                    <input type="hidden" id="savedPostId" name="saved_post_id" value="{{ $savedPost->id ?? '' }}">
+                    <input type="hidden" id="saved_post_id" name="saved_post_id" value="{{ $savedPost->id ?? '' }}">
 
                     <div class="bg-white rounded-lg shadow p-6 space-y-6">
                         @include('admin.posts.partials.form-title', ['savedPost' => $savedPost])

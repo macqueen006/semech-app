@@ -57,4 +57,28 @@ class SavedPostController extends Controller
             ], 500);
         }
     }
+
+    public function bulkDelete(Request $request)
+    {
+        if (!auth()->user()->can('post-create')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to delete saved posts.'
+            ], 403);
+        }
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:saved_posts,id'
+        ]);
+
+        $deleted = SavedPost::whereIn('id', $request->ids)
+            ->where('user_id', auth()->id()) // ✅ Security: only delete own drafts
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$deleted} saved post(s) deleted successfully!"
+        ]);
+    }
 }

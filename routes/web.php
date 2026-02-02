@@ -269,16 +269,7 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
             ->name('cleanup-images')
             ->middleware('permission:post-edit');
 
-        Route::delete('/{id}/reject', function ($id) {
-            if (!auth()->user()->can('post-edit')) {
-                abort(403);
-            }
-            $post = HistoryPost::where('post_id', $id)
-                ->where('additional_info', 2)
-                ->first();
-            $post?->delete();
-            return response()->json('OK');
-        })->name('reject')->middleware('permission:post-edit');
+        Route::delete('/posts/{id}/reject-autosave', [AdminPostController::class, 'reject'])->name('reject');
 
         Route::get('/{id}/auto-save-check', [AdminPostController::class, 'autoSaveCheck'])
             ->name('auto-save-check')

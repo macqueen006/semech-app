@@ -58,11 +58,11 @@ class HistoryPost extends Model
 
     public function user()
     {
-        return $this->post->user();
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function changeUser()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'change_user_id');
     }
 }

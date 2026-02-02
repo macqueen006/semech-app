@@ -561,45 +561,7 @@ class PostController extends Controller
             'image_alt.max' => 'Image alt text is too long (max 255 characters).',
         ]);
 
-        if ($request->saved_post_id) {
-            $savedPost = SavedPost::find($request->saved_post_id);
-
-            if ($savedPost && $savedPost->user_id == auth()->id()) {
-                $savedPost->update([
-                    'title' => $validated['title'] ?: 'Untitled',
-                    'excerpt' => $validated['excerpt'],
-                    'body' => $validated['body'],
-                    'image_path' => $validated['image_path'],
-                    'category_id' => $validated['category_id'],
-                    'is_published' => false,
-                    'read_time' => $validated['read_time'],
-                    'scheduled_at' => $request->use_scheduling && $request->scheduled_at ? $request->scheduled_at : null,
-                    'expires_at' => $request->use_expiration && $request->expires_at ? $request->expires_at : null,
-
-                    // SEO fields
-                    'meta_title' => $validated['meta_title'],
-                    'meta_description' => $validated['meta_description'],
-                    'focus_keyword' => $validated['focus_keyword'],
-                    'image_alt' => $validated['image_alt'],
-                    'og_title' => $validated['og_title'],
-                    'og_description' => $validated['og_description'],
-                    'og_image' => $validated['og_image'],
-                    'twitter_title' => $validated['twitter_title'],
-                    'twitter_description' => $validated['twitter_description'],
-                    'twitter_image' => $validated['twitter_image'],
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Auto-saved at ' . now()->format('H:i:s'),
-                    'saved_post_id' => $savedPost->id
-                ]);
-            }
-        }
-
-        // Create new draft
-        $savedPost = SavedPost::create([
-            'user_id' => auth()->id(),
+        $draftData = [
             'title' => $validated['title'] ?: 'Untitled',
             'excerpt' => $validated['excerpt'],
             'body' => $validated['body'],
@@ -621,7 +583,27 @@ class PostController extends Controller
             'twitter_title' => $validated['twitter_title'],
             'twitter_description' => $validated['twitter_description'],
             'twitter_image' => $validated['twitter_image'],
-        ]);
+        ];
+
+        // If saved_post_id exists, update that specific draft
+        if ($request->saved_post_id) {
+            $savedPost = SavedPost::find($request->saved_post_id);
+
+            if ($savedPost && $savedPost->user_id === auth()->id()) {
+                $savedPost->update($draftData);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Auto-saved at ' . now()->format('H:i:s'),
+                    'saved_post_id' => $savedPost->id
+                ]);
+            }
+        }
+
+        // Create new draft only if no saved_post_id was provided
+        $savedPost = SavedPost::create(array_merge($draftData, [
+            'user_id' => auth()->id(),
+        ]));
 
         return response()->json([
             'success' => true,
@@ -1085,5 +1067,26 @@ class PostController extends Controller
     public function analytics()
     {
 
+    }
+
+    /**
+     * Reject/delete the autosave draft
+     */
+    public function reject($id)
+    {
+        $post = Post::findOrFail($id);
+
+        if ($post->user_id != auth()->id() && !auth()->user()->hasPermissionTo('post-super-list')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        \App\Models\HistoryPost::where('post_id', $id)
+            ->where('additional_info', 2)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Auto-saved version discarded successfully.'
+        ]);
     }
 }

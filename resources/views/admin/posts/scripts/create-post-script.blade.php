@@ -1,5 +1,5 @@
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // ========================================
         // STATE MANAGEMENT
         // ========================================
@@ -33,7 +33,7 @@
                 toolbar: {
                     container: toolbarOptions,
                     handlers: {
-                        image: function() {
+                        image: function () {
                             openEditorImageModal();
                         }
                     }
@@ -50,7 +50,7 @@
             uploadedEditorImages = extractImagesFromBody(initialBody);
         }
 
-        quill.on('text-change', function(delta, oldDelta, source) {
+        quill.on('text-change', function (delta, oldDelta, source) {
             hasUnsavedChanges = true;
             document.getElementById('body').value = quill.root.innerHTML;
             updateWordCount();
@@ -124,7 +124,7 @@
         // ========================================
         // PAGE ABANDON PROTECTION
         // ========================================
-        window.addEventListener('beforeunload', function(e) {
+        window.addEventListener('beforeunload', function (e) {
             if (hasUnsavedChanges) {
                 // Collect all uploaded images for cleanup
                 const allImages = [...uploadedEditorImages];
@@ -160,7 +160,7 @@
         let autoFillSeo = autoFillSeoCheckbox ? autoFillSeoCheckbox.checked : true;
 
         if (autoFillSeoCheckbox) {
-            autoFillSeoCheckbox.addEventListener('change', function() {
+            autoFillSeoCheckbox.addEventListener('change', function () {
                 autoFillSeo = this.checked;
                 autoFillSeoFields();
             });
@@ -288,11 +288,16 @@
             autoSave();
         }, 30000);
 
+        let currentSavedPostId = document.getElementById('saved_post_id')?.value || null;
+
         function autoSave() {
             cleanupOrphanImages();
 
             const formData = new FormData(document.getElementById('postForm'));
-
+            // ✅ Add the saved_post_id to subsequent autosaves
+            if (currentSavedPostId) {
+                formData.set('saved_post_id', currentSavedPostId);
+            }
             fetch('{{ route('admin.posts.auto-save') }}', {
                 method: 'POST',
                 headers: {
@@ -303,6 +308,17 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        // ✅ Store the saved_post_id for next autosave
+                        if (data.saved_post_id) {
+                            currentSavedPostId = data.saved_post_id;
+                        }
+
+                        // ✅ Update URL if needed (optional - keeps URL in sync)
+                        if (data.update_url && currentSavedPostId) {
+                            const url = new URL(window.location);
+                            url.searchParams.set('edit', currentSavedPostId);
+                            window.history.replaceState({}, '', url);
+                        }
                         showMessage(data.message, 'success');
                     }
                 })
@@ -313,7 +329,7 @@
 
         const saveDraftBtn = document.getElementById('saveDraftBtn');
         if (saveDraftBtn) {
-            saveDraftBtn.addEventListener('click', function() {
+            saveDraftBtn.addEventListener('click', function () {
                 autoSave();
             });
         }
@@ -321,7 +337,7 @@
         // ========================================
         // FORM SUBMISSION
         // ========================================
-        document.getElementById('postForm').addEventListener('submit', function(e) {
+        document.getElementById('postForm').addEventListener('submit', function (e) {
             e.preventDefault();
             clearInterval(autoSaveInterval);
 
@@ -425,7 +441,7 @@
         }
 
         if (imageFile) {
-            imageFile.addEventListener('change', function() {
+            imageFile.addEventListener('change', function () {
                 if (this.files && this.files[0]) {
                     const file = this.files[0];
                     document.getElementById('fileInputContainer').classList.add('hidden');
@@ -434,7 +450,7 @@
                     progressContainer.classList.remove('hidden');
 
                     const reader = new FileReader();
-                    reader.onload = function(e) {
+                    reader.onload = function (e) {
                         progressContainer.innerHTML = `
                         <div class="mb-3 flex justify-between items-center">
                             <div class="flex items-center gap-x-3">
@@ -578,7 +594,7 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ images: [path] })
+                body: JSON.stringify({images: [path]})
             })
                 .then(response => response.json())
                 .then(data => {
@@ -698,7 +714,7 @@
         }
 
         if (editorImageFile) {
-            editorImageFile.addEventListener('change', function() {
+            editorImageFile.addEventListener('change', function () {
                 if (this.files && this.files[0]) {
                     const file = this.files[0];
 
@@ -708,7 +724,7 @@
                     progressContainer.classList.remove('hidden');
 
                     const reader = new FileReader();
-                    reader.onload = function(e) {
+                    reader.onload = function (e) {
                         progressContainer.innerHTML = `
                         <div class="mb-3 flex justify-between items-center">
                             <div class="flex items-center gap-x-3">
@@ -813,7 +829,7 @@
         }
 
         if (editorImageUrl) {
-            editorImageUrl.addEventListener('input', function() {
+            editorImageUrl.addEventListener('input', function () {
                 const editorUrlPreview = document.getElementById('editorUrlPreview');
                 const editorUrlPreviewImg = document.getElementById('editorUrlPreviewImg');
 
@@ -880,7 +896,7 @@
                         `).join('');
 
                             document.querySelectorAll('.editor-browse-image').forEach(el => {
-                                el.addEventListener('click', function() {
+                                el.addEventListener('click', function () {
                                     insertImageIntoEditor(this.dataset.path);
                                     uploadedEditorImages.push(this.dataset.path);
                                     closeEditorImageModal();
@@ -939,7 +955,7 @@
                         `).join('');
 
                             document.querySelectorAll('.browse-image').forEach(el => {
-                                el.addEventListener('click', function() {
+                                el.addEventListener('click', function () {
                                     // Delete old featured image if exists
                                     if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                                         deleteImageFromStorage(currentFeaturedImagePath);
@@ -978,7 +994,7 @@
         const isPublishedCheckbox = document.getElementById('is_published');
 
         if (useScheduling) {
-            useScheduling.addEventListener('change', function() {
+            useScheduling.addEventListener('change', function () {
                 if (this.checked) {
                     if (schedulingInputs) schedulingInputs.classList.remove('hidden');
                     if (isPublishedCheckbox) {
@@ -997,7 +1013,7 @@
         }
 
         if (scheduledAt) {
-            scheduledAt.addEventListener('change', function() {
+            scheduledAt.addEventListener('change', function () {
                 if (this.value) {
                     const date = new Date(this.value);
                     const now = new Date();
@@ -1032,7 +1048,7 @@
         const expiresAtPreview = document.getElementById('expiresAtPreview');
 
         if (useExpiration) {
-            useExpiration.addEventListener('change', function() {
+            useExpiration.addEventListener('change', function () {
                 if (this.checked) {
                     if (expirationInputs) expirationInputs.classList.remove('hidden');
                 } else {
@@ -1044,7 +1060,7 @@
         }
 
         if (expiresAt) {
-            expiresAt.addEventListener('change', function() {
+            expiresAt.addEventListener('change', function () {
                 if (this.value) {
                     const date = new Date(this.value);
                     const now = new Date();
@@ -1082,21 +1098,21 @@
         const metaDescriptionInput = document.getElementById('metaDescription');
 
         if (metaTitleInput) {
-            metaTitleInput.addEventListener('input', function() {
+            metaTitleInput.addEventListener('input', function () {
                 updateCharCount('metaTitle', this.value.length);
                 updateSeoPreview();
             });
         }
 
         if (metaDescriptionInput) {
-            metaDescriptionInput.addEventListener('input', function() {
+            metaDescriptionInput.addEventListener('input', function () {
                 updateCharCount('metaDescription', this.value.length);
                 updateSeoPreview();
             });
         }
 
         if (titleInput) {
-            titleInput.addEventListener('input', function() {
+            titleInput.addEventListener('input', function () {
                 hasUnsavedChanges = true;
                 updateCharCount('title', this.value.length);
                 if (autoFillSeo) {
@@ -1107,7 +1123,7 @@
         }
 
         if (excerptInput) {
-            excerptInput.addEventListener('input', function() {
+            excerptInput.addEventListener('input', function () {
                 hasUnsavedChanges = true;
                 updateCharCount('excerpt', this.value.length);
                 if (autoFillSeo) {
@@ -1125,7 +1141,7 @@
         seoFields.forEach(fieldId => {
             const field = document.getElementById(fieldId);
             if (field) {
-                field.addEventListener('input', function() {
+                field.addEventListener('input', function () {
                     const countId = fieldId.charAt(0).toLowerCase() + fieldId.slice(1);
                     updateCharCount(countId, this.value.length);
                     updateSeoPreview();
