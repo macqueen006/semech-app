@@ -41,6 +41,8 @@ class PermissionTableSeeder extends Seeder
             'image-delete',
             'subscriber-list',
             'subscriber-view',
+            'subscriber-delete',
+            'subscriber-edit',
             'contact-list',
             'contact-view',
             'analytics-view',

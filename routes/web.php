@@ -200,14 +200,58 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
         ->name('activity.show')
         ->middleware('permission:activity-log-view');
 
-    // Subscribers - Protected
     Route::prefix('subscribers')->name('subscribers.')->middleware('permission:subscriber-list')->group(function () {
+        // Index page
         Route::get('/', [AdminSubscriberController::class, 'index'])->name('index');
+
+        // Individual actions - MUST come before /{id} routes
+        Route::post('/{id}/resubscribe', [AdminSubscriberController::class, 'resubscribe'])
+            ->name('resubscribe');
+//            ->middleware('permission:subscriber-edit');
+
+        Route::post('/{id}/unsubscribe', [AdminSubscriberController::class, 'unsubscribe'])
+            ->name('unsubscribe');
+//            ->middleware('permission:subscriber-edit');
+
+        Route::post('/{id}/regenerate-token', [AdminSubscriberController::class, 'regenerateToken'])
+            ->name('regenerate-token');
+//            ->middleware('permission:subscriber-edit');
+
+        // Show individual subscriber
         Route::get('/{id}', [AdminSubscriberController::class, 'show'])
             ->name('show')
             ->middleware('permission:subscriber-view');
-    });
 
+        // Delete subscriber
+        Route::delete('/{id}', [AdminSubscriberController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('permission:subscriber-delete');
+
+        // Bulk actions
+        Route::post('/bulk-delete', [AdminSubscriberController::class, 'bulkDelete'])
+            ->name('bulk-delete')
+            ->middleware('permission:subscriber-delete');
+
+        Route::post('/bulk-resubscribe', [AdminSubscriberController::class, 'bulkResubscribe'])
+            ->name('bulk-resubscribe')
+            ->middleware('permission:subscriber-edit');
+
+        Route::post('/bulk-unsubscribe', [AdminSubscriberController::class, 'bulkUnsubscribe'])
+            ->name('bulk-unsubscribe')
+            ->middleware('permission:subscriber-edit');
+
+        // Export
+        Route::get('/export', [AdminSubscriberController::class, 'export'])
+            ->name('export')
+            ->middleware('permission:subscriber-export');
+
+        // AJAX endpoints (optional)
+        Route::get('/data', [AdminSubscriberController::class, 'getData'])
+            ->name('data');
+
+        Route::get('/stats', [AdminSubscriberController::class, 'getStats'])
+            ->name('stats');
+    });
     // Posts - Protected
     Route::prefix('posts')->name('posts.')->group(function () {
         // index post
@@ -461,10 +505,14 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
                 ->name('update-avatar');
         });
     });
-
+    
     // Contact Messages - Protected
     Route::prefix('contact-messages')->name('contact.')->middleware('permission:contact-list')->group(function () {
         Route::get('/', [AdminContactMessageController::class, 'index'])->name('index');
+
+        Route::post('/{id}/mark-replied', [AdminContactMessageController::class, 'markAsReplied'])
+            ->name('mark-replied')
+            ->middleware('permission:contact-view');
 
         Route::get('/{id}', [AdminContactMessageController::class, 'show'])
             ->name('show')
