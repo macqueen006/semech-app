@@ -49,15 +49,37 @@ class PostController extends Controller
         return view('pages.articles', compact('posts', 'betweenPostsAds', 'offset', 'page', 'hasMore', 'hasPrevious'));
     }
 
-    public function trackAdClick(Request $request, $advertisementId)
+    public function trackAdClick(Request $request)
     {
-        $advertisement = Advertisement::find($advertisementId);
+        $request->validate([
+            'advertisement_id' => 'required|exists:advertisements,id'
+        ]);
 
-        if ($advertisement) {
-            $advertisement->recordClick();
+        try {
+            $advertisement = Advertisement::find($request->advertisement_id);
+
+            if ($advertisement && $advertisement->isCurrentlyActive()) {
+                $advertisement->recordClick();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Click tracked successfully'
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Advertisement not found or inactive'
+            ], 404);
+
+        } catch (\Exception $e) {
+            \Log::error('Error tracking ad click: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to track click'
+            ], 500);
         }
-
-        return response()->json(['success' => true]);
     }
 
     public function show($slug)

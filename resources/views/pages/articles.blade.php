@@ -132,18 +132,21 @@
             </section>
         </div>
 
-        <script>
-            function trackAdClick(advertisementId) {
-                fetch('/track-ad-click', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        advertisement_id: advertisementId
-                    })
-                });
-            }
-        </script>
+        @push('scripts')
+            <script>
+                function trackAdClick(advertisementId) {
+                    fetch('/track-ad-click', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            advertisement_id: advertisementId
+                        })
+                    });
+                }
+            </script>
+        @endpush
+        <x-ads.footer />
 </x-guest-layout>

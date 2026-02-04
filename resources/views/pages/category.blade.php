@@ -125,4 +125,5 @@
             </div>
         </section>
     </div>
+    <x-ads.footer />
 </x-guest-layout>

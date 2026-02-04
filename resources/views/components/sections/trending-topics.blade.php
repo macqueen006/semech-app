@@ -39,7 +39,7 @@
         <!-- Featured Posts Grid - Next 3 posts (5th, 6th, 7th) -->
         <div>
             <div role="list" class="hero-info">
-                @foreach($posts->take(4)  as $post)
+                @foreach($posts->take(3)  as $post)
                     <div class="hero-data" role="listitem">
                         @if($post->image_path)
                             <img src="{{ asset($post->image_path) }}"

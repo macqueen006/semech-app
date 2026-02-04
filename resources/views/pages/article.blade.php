@@ -48,6 +48,7 @@
             </div>
         </div>
 
+        <x-ads.header />
         <!-- Post Header -->
         <section class="block pt-[60px] pb-[40px]">
             <div class="hero-container">
@@ -182,7 +183,7 @@
 
                             <div class="border-l border-gray-200 pl-2 ml-2">
                                 @auth
-                                   <x-bookmark-button :post="$post" />
+                                    <x-bookmark-button :post="$post"/>
                                 @endauth
                             </div>
                         </div>
@@ -204,6 +205,8 @@
                 </div>
             </div>
         </section>
+
+        <x-ads.sidebar />
 
         <!-- Author Bio Section -->
         <section class="section">
@@ -370,6 +373,7 @@
         @endif
     </div>
 
+    <x-ads.footer/>
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {

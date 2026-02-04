@@ -9,12 +9,20 @@
             <x-sections.trending-topics :posts="$trendingTopics"/>
         @endif
         <!-- End Hero Section -->
-        <x-ads.header/>
+
+        <!-- ads header -->
+        <x-ads.header />
+        <!-- end ads header -->
+
         <!-- Highlighted Posts  -->
         @if($highlightedPosts->isNotEmpty())
             <x-sections.highlighted-posts :posts="$highlightedPosts"/>
         @endif
         <!-- End Highlighted Posts -->
+
+        <!-- ads header -->
+        <x-ads.between-posts />
+        <!-- end ads header -->
 
         <!-- Popular Posts -->
         @if($popularPosts->isNotEmpty())
@@ -32,5 +40,8 @@
         <!-- Recent Posts -->
         <x-sections.recent-posts :posts="$allPosts" loadMore="loadMore"/>
         <!-- End Recent Posts -->
+        <!-- ads footer -->
+        <x-ads.footer />
+        <!-- end ads footer -->
     </div>
 </x-guest-layout>

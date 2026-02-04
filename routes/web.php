@@ -505,7 +505,7 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
                 ->name('update-avatar');
         });
     });
-    
+
     // Contact Messages - Protected
     Route::prefix('contact-messages')->name('contact.')->middleware('permission:contact-list')->group(function () {
         Route::get('/', [AdminContactMessageController::class, 'index'])->name('index');
@@ -524,10 +524,21 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
     });
 
     // Advertisements - Protected
-    Route::prefix('advertisements')->name('advertisements.')->group(function () {
-        Route::get('/', [AdminAdvertisementController::class, 'index'])
-            ->name('index')
-            ->middleware('permission:advertisement-list');
+    Route::prefix('advertisements')->name('advertisements.')->middleware('permission:advertisement-list')->group(function () {
+        Route::get('/', [AdminAdvertisementController::class, 'index'])->name('index');
+
+        // Image upload/delete routes - MUST come before {id} routes
+        Route::post('/upload-image', [AdminAdvertisementController::class, 'uploadImage'])
+            ->name('upload-image')
+            ->middleware('permission:advertisement-create|advertisement-edit');
+
+        Route::post('/delete-image', [AdminAdvertisementController::class, 'deleteImage'])
+            ->name('delete-image')
+            ->middleware('permission:advertisement-create|advertisement-edit');
+
+        Route::post('/{id}/toggle-status', [AdminAdvertisementController::class, 'toggleStatus'])
+            ->name('toggle-status')
+            ->middleware('permission:advertisement-edit');
 
         Route::get('/create', [AdminAdvertisementController::class, 'create'])
             ->name('create')
@@ -548,12 +559,5 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
         Route::delete('/{id}', [AdminAdvertisementController::class, 'destroy'])
             ->name('destroy')
             ->middleware('permission:advertisement-delete');
-
-        // Track ad clicks
-        Route::post('/{id}/click', function ($id) {
-            $ad = \App\Models\Advertisement::findOrFail($id);
-            $ad->recordClick();
-            return response()->json(['success' => true]);
-        })->name('click');
     });
 });
