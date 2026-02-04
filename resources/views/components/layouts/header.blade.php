@@ -165,23 +165,6 @@
                                 </button>
 
                                 @push('modal')
-                                    <!-- Search Modal Button -->
-                                    <button
-                                        aria-haspopup="dialog"
-                                        aria-expanded="false"
-                                        aria-controls="hs-scale-animation-modal"
-                                        data-hs-overlay="#hs-scale-animation-modal"
-                                        type="button"
-                                        aria-label="Open search"
-                                        class="hidden md:flex cursor-pointer items-center justify-center rounded-full text-body d05xb focus:outline-hidden r17tr">
-                                        <svg class="block text-body size-4" xmlns="http://www.w3.org/2000/svg"
-                                             width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <path d="m21 21-4.3-4.3"></path>
-                                        </svg>
-                                    </button>
-
                                     <!-- Search Modal -->
                                     <div id="hs-scale-animation-modal"
                                          class="hs-overlay hidden size-full fixed top-0 start-0 z-[80] overflow-x-hidden overflow-y-auto pointer-events-none"

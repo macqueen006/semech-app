@@ -187,7 +187,14 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
 
     // Profile - No permission needed (all authenticated users can access)
     Route::get('/profile', [AdminProfileController::class, 'index'])->name('profile');
-    Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [AdminProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Avatar routes
+    Route::post('/profile/upload-avatar', [AdminProfileController::class, 'uploadAvatar'])->name('profile.upload-avatar');
+    Route::post('/profile/delete-avatar', [AdminProfileController::class, 'deleteAvatar'])->name('profile.delete-avatar');
+    Route::post('/profile/cleanup-avatars', [AdminProfileController::class, 'cleanupAvatars'])->name('profile.cleanup-avatars');
+
 
     // Activity Log - Protected
     Route::get('activity-log', [AdminActivityLogController::class, 'index'])
@@ -407,6 +414,23 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
         Route::get('/', [AdminUserController::class, 'index'])
             ->name('index')
             ->middleware('permission:user-list');
+
+        // Avatar upload/delete routes - MUST come before {id} routes
+        Route::post('/upload-avatar', [AdminUserController::class, 'uploadAvatar'])
+            ->name('upload-avatar')
+            ->middleware('permission:user-create|user-edit');
+
+        Route::post('/delete-avatar', [AdminUserController::class, 'deleteAvatar'])
+            ->name('delete-avatar')
+            ->middleware('permission:user-create|user-edit');
+
+        Route::post('/cleanup-avatars', [AdminUserController::class, 'cleanupAvatars'])
+            ->name('cleanup-avatars')
+            ->middleware('permission:user-create|user-edit');
+
+        Route::post('/bulk-delete', [AdminUserController::class, 'bulkDelete'])
+            ->name('bulk-delete')
+            ->middleware('permission:user-delete');
 
         Route::get('/create', [AdminUserController::class, 'create'])
             ->name('create')

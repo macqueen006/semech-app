@@ -18,17 +18,34 @@
                 @csrf
                 @method('patch')
 
-                <!-- Name -->
+                <!-- First Name -->
                 <x-input-group>
-                    <x-input-label for="name" label="Name" />
+                    <x-input-label for="firstname" label="First Name" />
                     <x-text-input
-                        id="name"
-                        name="name"
+                        id="firstname"
+                        name="firstname"
                         type="text"
-                        :value="old('name', $user->name)"
+                        :value="old('firstname', $user->firstname)"
                         required
                         autofocus
-                        autocomplete="name"
+                        autocomplete="firstname"
+                    />
+                    @error('name')
+                    <x-input-error :message="$message" />
+                    @enderror
+                </x-input-group>
+
+                <!-- Last Name -->
+                <x-input-group>
+                    <x-input-label for="lastname" label="Last Name" />
+                    <x-text-input
+                        id="lastname"
+                        name="lastname"
+                        type="text"
+                        :value="old('lastname', $user->lastname)"
+                        required
+                        autofocus
+                        autocomplete="lastname"
                     />
                     @error('name')
                     <x-input-error :message="$message" />
