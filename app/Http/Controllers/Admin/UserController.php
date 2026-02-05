@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Post;
 use App\Models\User;
 use App\Services\ImageStorageService;
 use Spatie\Permission\Models\Role;
@@ -51,9 +52,10 @@ class UserController extends Controller
 
         // Get user statistics
         $userStats = User::withCount(['posts'])
-            ->selectRaw('users.*, COALESCE(SUM(posts.view_count), 0) as total_views')
-            ->leftJoin('posts', 'users.id', '=', 'posts.user_id')
-            ->groupBy('users.id')
+            ->addSelect([
+                'total_views' => Post::selectRaw('COALESCE(SUM(view_count), 0)')
+                    ->whereColumn('user_id', 'users.id')
+            ])
             ->get()
             ->keyBy('id');
 
