@@ -1,16 +1,18 @@
 <?php
 
-use App\Http\Controllers\Pages\BookmarkController;
-use App\Http\Controllers\Pages\CategoryController;
-use App\Http\Controllers\NewsletterController;
-use App\Http\Controllers\Pages\AboutController;
-use App\Http\Controllers\Pages\ContactController;
-use App\Http\Controllers\Pages\HomeController;
-use App\Http\Controllers\Pages\PostController;
-use App\Http\Controllers\Pages\SouthWestController;
-use App\Http\Controllers\ProfileController;
-use App\Models\HistoryPost;
-use App\Models\SavedPost;
+use App\Http\Controllers\Pages\{
+    BookmarkController,
+    CategoryController,
+    AboutController,
+    ContactController,
+    HomeController,
+    PostController,
+    SouthWestController
+};
+use App\Http\Controllers\{
+    NewsletterController,
+    ProfileController
+};
 use App\Http\Controllers\Admin\{
     DashboardController as AdminDashboardController,
     AnalyticsController as AdminAnalyticsController,
@@ -29,36 +31,42 @@ use App\Http\Controllers\Admin\{
     AdvertisementController as AdminAdvertisementController,
     PostHistoryController as AdminPostHistoryController
 };
+use App\Models\{Category, Post, SavedPost};
 use Illuminate\Http\Request;
-use App\Models\Category;
-use App\Models\Post;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/register', function () {
-    return redirect()->route('login');
-});
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
 
+Route::get('/register', fn() => redirect()->route('login'));
+
+// Home & Articles
 Route::get('/', [HomeController::class, 'index'])->name('home.index');
 Route::post('/load-more', [HomeController::class, 'loadMore'])->name('home.loadMore');
 Route::get('/articles', [PostController::class, 'index'])->name('articles');
 Route::get('/article/{slug}', [PostController::class, 'show'])->name('post.show');
+
+// Categories
+Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show');
+
+// Static Pages
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
-Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show');
 Route::get('/south-west-geo-data-integration', [SouthWestController::class, 'index'])->name('south.west');
 Route::get('/about-us', [AboutController::class, 'index'])->name('about');
-Route::get('/privacy-policy', function () {
-    return view('pages.privacy-policy');
-})->name('privacy.policy');
-Route::get('/advertise', function () {
-    return view('pages.advertise');
-})->name('advertise');
-Route::get('/terms-and-conditions', function () {
-    return view('pages.terms-condition');
-})->name('terms.conditions');
+Route::get('/privacy-policy', fn() => view('pages.privacy-policy'))->name('privacy.policy');
+Route::get('/advertise', fn() => view('pages.advertise'))->name('advertise');
+Route::get('/terms-and-conditions', fn() => view('pages.terms-condition'))->name('terms.conditions');
+
+// Newsletter
 Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 Route::post('/newsletter/subscribe-footer', [NewsletterController::class, 'subscribeFooter'])->name('newsletter.subscribe-footer');
-Route::get('/search', function (\Illuminate\Http\Request $request) {
+
+// Search
+Route::get('/search', function (Request $request) {
     $query = $request->input('q', '');
     $type = $request->input('type', 'all');
 
@@ -70,7 +78,7 @@ Route::get('/search', function (\Illuminate\Http\Request $request) {
         $results = [];
         $counts = ['all' => 0, 'posts' => 0, 'categories' => 0];
 
-        // Search Posts with Scout Database Driver
+        // Search Posts
         if ($type === 'all' || $type === 'posts') {
             $posts = Post::search($query)
                 ->query(fn($builder) => $builder
@@ -107,7 +115,7 @@ Route::get('/search', function (\Illuminate\Http\Request $request) {
             $counts['posts'] = $postResults->count();
         }
 
-        // Search Categories with Scout Database Driver
+        // Search Categories
         if ($type === 'all' || $type === 'categories') {
             $categories = Category::search($query)->get();
 
@@ -140,23 +148,33 @@ Route::get('/search', function (\Illuminate\Http\Request $request) {
     }
 })->name('search');
 
+// Ad Tracking
 Route::post('/track-ad-click', [PostController::class, 'trackAdClick'])->name('track-ad-click');
 
-Route::get('/dashboard', function () {
-    return view('dashboard.index');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
+/*
+|--------------------------------------------------------------------------
+| Auth Routes
+|--------------------------------------------------------------------------
+*/
 
 require __DIR__ . '/auth.php';
 
-// ============================================================================
-// AUTHENTICATED ROUTES
-// ============================================================================
+/*
+|--------------------------------------------------------------------------
+| Authenticated User Routes
+|--------------------------------------------------------------------------
+*/
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard
+    Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
+
+    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Bookmarks
     Route::get('/bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');
     Route::post('/bookmarks/toggle', [BookmarkController::class, 'toggle'])->name('bookmarks.toggle');
 });
@@ -167,15 +185,22 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(function () {
+Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(function () {
 
-    // Dashboard - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('index');
-    // Dashboard AJAX endpoints
     Route::post('/refresh', [AdminDashboardController::class, 'refresh'])->name('refresh');
     Route::get('/analytics/data', [AdminDashboardController::class, 'getData'])->name('analytics.data');
 
-    // Analytics - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Analytics
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('analytics')->name('analytics.')->middleware('permission:analytics-view')->group(function () {
         Route::get('/export/csv', [AdminAnalyticsExportController::class, 'exportCsv'])
             ->name('export.csv')
@@ -185,126 +210,83 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
             ->middleware('permission:analytics-export');
     });
 
-    // Profile - No permission needed (all authenticated users can access)
+    /*
+    |--------------------------------------------------------------------------
+    | Profile
+    |--------------------------------------------------------------------------
+    */
     Route::get('/profile', [AdminProfileController::class, 'index'])->name('profile');
     Route::patch('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [AdminProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Avatar routes
     Route::post('/profile/upload-avatar', [AdminProfileController::class, 'uploadAvatar'])->name('profile.upload-avatar');
     Route::post('/profile/delete-avatar', [AdminProfileController::class, 'deleteAvatar'])->name('profile.delete-avatar');
     Route::post('/profile/cleanup-avatars', [AdminProfileController::class, 'cleanupAvatars'])->name('profile.cleanup-avatars');
 
+    /*
+    |--------------------------------------------------------------------------
+    | Activity Log
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('activity-log')->name('activity.')->middleware('permission:activity-log-view')->group(function () {
+        Route::get('/', [AdminActivityLogController::class, 'index'])->name('index');
+        Route::get('/{id}', [AdminActivityLogController::class, 'show'])->name('show');
+        Route::post('/bulk-delete', [AdminActivityLogController::class, 'bulkDelete'])
+            ->name('bulk-delete')
+            ->middleware('permission:activity-log-delete');
+    });
 
-    // Activity Log - Protected
-    Route::get('activity-log', [AdminActivityLogController::class, 'index'])
-        ->name('activity.index')
-        ->middleware('permission:activity-log-view');
-    Route::post('activity-log/bulk-delete', [AdminActivityLogController::class, 'bulkDelete'])
-        ->name('activity.bulk-delete')
-        ->middleware('permission:activity-log-delete');
-    Route::get('activity-log/{id}', [AdminActivityLogController::class, 'show'])
-        ->name('activity.show')
-        ->middleware('permission:activity-log-view');
-
+    /*
+    |--------------------------------------------------------------------------
+    | Subscribers
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('subscribers')->name('subscribers.')->middleware('permission:subscriber-list')->group(function () {
-        // Index page
         Route::get('/', [AdminSubscriberController::class, 'index'])->name('index');
+        Route::get('/data', [AdminSubscriberController::class, 'getData'])->name('data');
+        Route::get('/stats', [AdminSubscriberController::class, 'getStats'])->name('stats');
+        Route::get('/export', [AdminSubscriberController::class, 'export'])
+            ->name('export')
+            ->middleware('permission:subscriber-export');
 
-        // Individual actions - MUST come before /{id} routes
-        Route::post('/{id}/resubscribe', [AdminSubscriberController::class, 'resubscribe'])
-            ->name('resubscribe');
-//            ->middleware('permission:subscriber-edit');
-
-        Route::post('/{id}/unsubscribe', [AdminSubscriberController::class, 'unsubscribe'])
-            ->name('unsubscribe');
-//            ->middleware('permission:subscriber-edit');
-
-        Route::post('/{id}/regenerate-token', [AdminSubscriberController::class, 'regenerateToken'])
-            ->name('regenerate-token');
-//            ->middleware('permission:subscriber-edit');
-
-        // Show individual subscriber
+        // Individual subscriber actions
         Route::get('/{id}', [AdminSubscriberController::class, 'show'])
             ->name('show')
             ->middleware('permission:subscriber-view');
-
-        // Delete subscriber
         Route::delete('/{id}', [AdminSubscriberController::class, 'destroy'])
             ->name('destroy')
             ->middleware('permission:subscriber-delete');
+        Route::post('/{id}/resubscribe', [AdminSubscriberController::class, 'resubscribe'])->name('resubscribe');
+        Route::post('/{id}/unsubscribe', [AdminSubscriberController::class, 'unsubscribe'])->name('unsubscribe');
+        Route::post('/{id}/regenerate-token', [AdminSubscriberController::class, 'regenerateToken'])->name('regenerate-token');
 
         // Bulk actions
         Route::post('/bulk-delete', [AdminSubscriberController::class, 'bulkDelete'])
             ->name('bulk-delete')
             ->middleware('permission:subscriber-delete');
-
         Route::post('/bulk-resubscribe', [AdminSubscriberController::class, 'bulkResubscribe'])
             ->name('bulk-resubscribe')
             ->middleware('permission:subscriber-edit');
-
         Route::post('/bulk-unsubscribe', [AdminSubscriberController::class, 'bulkUnsubscribe'])
             ->name('bulk-unsubscribe')
             ->middleware('permission:subscriber-edit');
-
-        // Export
-        Route::get('/export', [AdminSubscriberController::class, 'export'])
-            ->name('export')
-            ->middleware('permission:subscriber-export');
-
-        // AJAX endpoints (optional)
-        Route::get('/data', [AdminSubscriberController::class, 'getData'])
-            ->name('data');
-
-        Route::get('/stats', [AdminSubscriberController::class, 'getStats'])
-            ->name('stats');
     });
-    // Posts - Protected
+
+    /*
+    |--------------------------------------------------------------------------
+    | Posts
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('posts')->name('posts.')->group(function () {
-        // index post
+        // List & Browse
         Route::get('/', [AdminPostController::class, 'index'])
             ->name('index')
             ->middleware('permission:post-list');
-        Route::delete('/{id}', [AdminPostController::class, 'destroy'])
-            ->name('destroy')
-            ->middleware('permission:post-delete');
-        Route::post('/toggle-highlight', [AdminPostController::class, 'toggleHighlight'])->name('toggle-highlight');
-        Route::post('/bulk-delete', [AdminPostController::class, 'bulkDelete'])->name('bulk-delete');
-        Route::post('/bulk-publish', [AdminPostController::class, 'bulkPublish'])->name('bulk-publish');
-        Route::post('/bulk-unpublish', [AdminPostController::class, 'bulkUnpublish'])->name('bulk-unpublish');
-        Route::post('/bulk-change-category', [AdminPostController::class, 'bulkChangeCategory'])->name('bulk-change-category');
-        Route::post('/bulk-highlight', [AdminPostController::class, 'bulkHighlight'])->name('bulk-highlight');
-        Route::post('/bulk-remove-highlight', [AdminPostController::class, 'bulkRemoveHighlight'])->name('bulk-remove-highlight');
-        //create post
-        Route::get('/create', [AdminPostController::class, 'create'])
-            ->name('create')
-            ->middleware('permission:post-create');
-        Route::post('/', [AdminPostController::class, 'store'])
-            ->name('store')
-            ->middleware('permission:post-create');
-        Route::post('/auto-save', [AdminPostController::class, 'autoSave'])->name('auto-save');
-        Route::post('/upload-image', [AdminPostController::class, 'uploadImage'])->name('upload-image');
-        Route::post('/upload-editor-image', [AdminPostController::class, 'uploadEditorImage'])->name('upload-editor-image');
-        Route::get('/browse-images', [AdminPostController::class, 'browseImages'])->name('browse-images');
-        Route::get('/browse-editor-images', [AdminPostController::class, 'browseEditorImages'])->name('browse-editor-images');
-
-        //edit
-        Route::get('/{id}/edit', [AdminPostController::class, 'edit'])
-            ->name('edit')
-            ->middleware('permission:post-edit');
-        Route::put('/{id}', [AdminPostController::class, 'update'])
-            ->name('update')
-            ->middleware('permission:post-edit');
-
         Route::get('/{slug}', [AdminPostController::class, 'show'])
             ->name('show')
             ->middleware('permission:post-list');
-
         Route::get('/{slug}/analytics', [AdminPostController::class, 'analytics'])
             ->name('analytics')
             ->middleware('permission:post-list');
-
-        // Post API Routes - Protected
         Route::get('/{id}/show', function ($id) {
             if (!auth()->user()->can('post-list')) {
                 abort(403);
@@ -312,20 +294,14 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
             return response()->json(Post::with('category')->findOrFail($id));
         })->name('show.json')->middleware('permission:post-list');
 
-        Route::post('/{id}/auto-save', [AdminPostController::class, 'autoSaveEdit'])
-            ->name('auto-save-edit')
-            ->middleware('permission:post-edit');
-
-        Route::post('/cleanup-images', [AdminPostController::class, 'cleanupImages'])
-            ->name('cleanup-images')
-            ->middleware('permission:post-edit');
-
-        Route::delete('/posts/{id}/reject-autosave', [AdminPostController::class, 'reject'])->name('reject');
-
-        Route::get('/{id}/auto-save-check', [AdminPostController::class, 'autoSaveCheck'])
-            ->name('auto-save-check')
-            ->middleware('permission:post-edit');
-
+        // Create
+        Route::get('/create', [AdminPostController::class, 'create'])
+            ->name('create')
+            ->middleware('permission:post-create');
+        Route::post('/', [AdminPostController::class, 'store'])
+            ->name('store')
+            ->middleware('permission:post-create');
+        Route::post('/auto-save', [AdminPostController::class, 'autoSave'])->name('auto-save');
         Route::post('/calculate-read-time', function (Request $request) {
             $readingSpeed = 200;
             $words = str_word_count(strip_tags($request->get('body')));
@@ -333,25 +309,61 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
             return response()->json($readingTime);
         })->name('read-time')->middleware('permission:post-create|post-edit');
 
-        // Post History - Protected
-        Route::get('/{id}/edit/history', [AdminPostHistoryController::class, 'index'])
-            ->name('history.index')
-            ->middleware('permission:post-list');
-
-        Route::get('/{id}/edit/history/{history_id}/show', [AdminPostHistoryController::class, 'show'])
-            ->name('history.show')
-            ->middleware('permission:post-list');
-        Route::post('/{id}/edit/history/{history_id}/revert', [AdminPostHistoryController::class, 'revert'])
-            ->name('history.revert')
+        // Edit
+        Route::get('/{id}/edit', [AdminPostController::class, 'edit'])
+            ->name('edit')
+            ->middleware('permission:post-edit');
+        Route::put('/{id}', [AdminPostController::class, 'update'])
+            ->name('update')
+            ->middleware('permission:post-edit');
+        Route::post('/{id}/auto-save', [AdminPostController::class, 'autoSaveEdit'])
+            ->name('auto-save-edit')
+            ->middleware('permission:post-edit');
+        Route::get('/{id}/auto-save-check', [AdminPostController::class, 'autoSaveCheck'])
+            ->name('auto-save-check')
             ->middleware('permission:post-edit');
 
+        // Delete
+        Route::delete('/{id}', [AdminPostController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('permission:post-delete');
         Route::delete('/drafts/{id}', [AdminPostHistoryController::class, 'deleteDraft'])->name('drafts.delete');
+
+        // Image Management
+        Route::post('/upload-image', [AdminPostController::class, 'uploadImage'])->name('upload-image');
+        Route::post('/upload-editor-image', [AdminPostController::class, 'uploadEditorImage'])->name('upload-editor-image');
+        Route::get('/browse-images', [AdminPostController::class, 'browseImages'])->name('browse-images');
+        Route::get('/browse-editor-images', [AdminPostController::class, 'browseEditorImages'])->name('browse-editor-images');
+        Route::post('/cleanup-images', [AdminPostController::class, 'cleanupImages'])
+            ->name('cleanup-images')
+            ->middleware('permission:post-edit');
+
+        // Bulk Actions
+        Route::post('/toggle-highlight', [AdminPostController::class, 'toggleHighlight'])->name('toggle-highlight');
+        Route::post('/bulk-delete', [AdminPostController::class, 'bulkDelete'])->name('bulk-delete');
+        Route::post('/bulk-publish', [AdminPostController::class, 'bulkPublish'])->name('bulk-publish');
+        Route::post('/bulk-unpublish', [AdminPostController::class, 'bulkUnpublish'])->name('bulk-unpublish');
+        Route::post('/bulk-change-category', [AdminPostController::class, 'bulkChangeCategory'])->name('bulk-change-category');
+        Route::post('/bulk-highlight', [AdminPostController::class, 'bulkHighlight'])->name('bulk-highlight');
+        Route::post('/bulk-remove-highlight', [AdminPostController::class, 'bulkRemoveHighlight'])->name('bulk-remove-highlight');
+
+        // Post History
+        Route::prefix('/{id}/edit/history')->name('history.')->middleware('permission:post-list')->group(function () {
+            Route::get('/', [AdminPostHistoryController::class, 'index'])->name('index');
+            Route::get('/{history_id}/show', [AdminPostHistoryController::class, 'show'])->name('show');
+            Route::post('/{history_id}/revert', [AdminPostHistoryController::class, 'revert'])
+                ->name('revert')
+                ->middleware('permission:post-edit');
+        });
     });
 
-    // Saved Posts - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Saved Posts
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('posts-saved')->name('posts-saved.')->middleware('permission:post-list')->group(function () {
         Route::get('/', [AdminSavedPostController::class, 'index'])->name('index');
-
         Route::get('/{id}/edit', function ($id) {
             $saved = SavedPost::findOrFail($id);
             if ($saved->user_id != auth()->id() && !auth()->user()->hasPermissionTo('post-super-list')) {
@@ -359,229 +371,212 @@ Route::middleware(['auth', 'role'])->name('admin.')->prefix('admin')->group(func
             }
             return redirect('dashboard/posts/create?edit=' . $saved->id);
         })->name('edit')->middleware('permission:post-edit');
-
-        Route::delete('/{id}', [AdminSavedPostController::class, 'destroy'])->name('destroy')->middleware('permission:post-delete');
+        Route::delete('/{id}', [AdminSavedPostController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('permission:post-delete');
     });
 
-    // Categories - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Categories
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('categories')->name('categories.')->group(function () {
         Route::get('/', [AdminCategoryController::class, 'index'])
             ->name('index')
             ->middleware('permission:category-list');
-
         Route::get('/create', [AdminCategoryController::class, 'create'])
             ->name('create')
             ->middleware('permission:category-create');
-
         Route::post('/', [AdminCategoryController::class, 'store'])
             ->name('store')
             ->middleware('permission:category-create');
-
         Route::get('/{id}/edit', [AdminCategoryController::class, 'edit'])
             ->name('edit')
             ->middleware('permission:category-edit');
-
         Route::put('/{id}', [AdminCategoryController::class, 'update'])
             ->name('update')
             ->middleware('permission:category-edit');
-
         Route::delete('/{id}', [AdminCategoryController::class, 'destroy'])
             ->name('destroy')
             ->middleware('permission:category-delete');
     });
 
-    // Comments - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Comments
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('comments')->name('comments.')->group(function () {
         Route::get('/', [AdminCommentController::class, 'index'])
             ->name('index')
             ->middleware('permission:comment-list');
-
         Route::get('/{id}/edit', [AdminCommentController::class, 'edit'])
             ->name('edit')
             ->middleware('permission:comment-edit');
-
         Route::put('/{id}', [AdminCommentController::class, 'update'])
             ->name('update')
             ->middleware('permission:comment-edit');
-
         Route::delete('/{id}', [AdminCommentController::class, 'destroy'])
             ->name('destroy')
             ->middleware('permission:comment-delete');
     });
 
-    // Users - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Users
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminUserController::class, 'index'])
             ->name('index')
             ->middleware('permission:user-list');
+        Route::get('/create', [AdminUserController::class, 'create'])
+            ->name('create')
+            ->middleware('permission:user-create');
+        Route::post('/', [AdminUserController::class, 'store'])
+            ->name('store')
+            ->middleware('permission:user-create');
+        Route::get('/{id}', [AdminUserController::class, 'show'])
+            ->name('show')
+            ->middleware('permission:user-list');
+        Route::get('/{id}/edit', [AdminUserController::class, 'edit'])
+            ->name('edit')
+            ->middleware('permission:user-edit');
+        Route::put('/{id}', [AdminUserController::class, 'update'])
+            ->name('update')
+            ->middleware('permission:user-edit');
+        Route::delete('/{id}', [AdminUserController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('permission:user-delete');
 
-        // Avatar upload/delete routes - MUST come before {id} routes
+        // Avatar Management
         Route::post('/upload-avatar', [AdminUserController::class, 'uploadAvatar'])
             ->name('upload-avatar')
             ->middleware('permission:user-create|user-edit');
-
         Route::post('/delete-avatar', [AdminUserController::class, 'deleteAvatar'])
             ->name('delete-avatar')
             ->middleware('permission:user-create|user-edit');
-
         Route::post('/cleanup-avatars', [AdminUserController::class, 'cleanupAvatars'])
             ->name('cleanup-avatars')
             ->middleware('permission:user-create|user-edit');
 
+        // Bulk Actions
         Route::post('/bulk-delete', [AdminUserController::class, 'bulkDelete'])
             ->name('bulk-delete')
             ->middleware('permission:user-delete');
-
-        Route::get('/create', [AdminUserController::class, 'create'])
-            ->name('create')
-            ->middleware('permission:user-create');
-
-        Route::post('/', [AdminUserController::class, 'store'])
-            ->name('store')
-            ->middleware('permission:user-create');
-
-        Route::get('/{id}', [AdminUserController::class, 'show'])
-            ->name('show')
-            ->middleware('permission:user-list');
-
-        Route::get('/{id}/edit', [AdminUserController::class, 'edit'])
-            ->name('edit')
-            ->middleware('permission:user-edit');
-
-        Route::put('/{id}', [AdminUserController::class, 'update'])
-            ->name('update')
-            ->middleware('permission:user-edit');
-
-        Route::delete('/{id}', [AdminUserController::class, 'destroy'])
-            ->name('destroy')
-            ->middleware('permission:user-delete');
     });
 
-    // Roles - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Roles
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [AdminRoleController::class, 'index'])
             ->name('index')
             ->middleware('permission:role-list');
-
         Route::get('/create', [AdminRoleController::class, 'create'])
             ->name('create')
             ->middleware('permission:role-create');
-
         Route::post('/', [AdminRoleController::class, 'store'])
             ->name('store')
             ->middleware('permission:role-create');
-
         Route::get('/{id}', [AdminRoleController::class, 'show'])
             ->name('show')
             ->middleware('permission:role-list');
-
         Route::get('/{id}/edit', [AdminRoleController::class, 'edit'])
             ->name('edit')
             ->middleware('permission:role-edit');
-
         Route::put('/{id}', [AdminRoleController::class, 'update'])
             ->name('update')
             ->middleware('permission:role-edit');
-
         Route::delete('/{id}', [AdminRoleController::class, 'destroy'])
             ->name('destroy')
             ->middleware('permission:role-delete');
     });
 
+    /*
+    |--------------------------------------------------------------------------
+    | Images
+    |--------------------------------------------------------------------------
+    */
     Route::get('/load-more', [AdminImageController::class, 'loadMore'])->name('load-more');
 
     Route::prefix('images')->name('images.')->middleware('permission:image-list')->group(function () {
         Route::get('/', [AdminImageController::class, 'indexPage'])->name('index');
 
         Route::prefix('api')->name('api.')->group(function () {
-            // Main image list with filters, sorting, pagination
             Route::get('/', [AdminImageController::class, 'index'])->name('index');
-
-            // Get specific image info
             Route::get('/{directory}/{filename}', [AdminImageController::class, 'show'])->name('show');
-
-            // Upload new image
             Route::post('/store', [AdminImageController::class, 'store'])
-                ->middleware('permission:image-create')
-                ->name('store');
-
-            // Delete image
+                ->name('store')
+                ->middleware('permission:image-create');
             Route::delete('/{directory}/{filename}', [AdminImageController::class, 'destroy'])
-                ->middleware('permission:image-delete')
-                ->name('destroy');
-
-            // Get unused images
+                ->name('destroy')
+                ->middleware('permission:image-delete');
             Route::get('/unused', [AdminImageController::class, 'unused'])->name('unused');
-
-            // Cleanup unused images
             Route::post('/cleanup-unused', [AdminImageController::class, 'cleanupUnused'])
-                ->middleware('permission:image-delete')
-                ->name('cleanup-unused');
-
-            // Storage statistics
+                ->name('cleanup-unused')
+                ->middleware('permission:image-delete');
             Route::get('/stats', [AdminImageController::class, 'stats'])->name('stats');
-
-            // Find duplicates
             Route::get('/duplicates', [AdminImageController::class, 'duplicates'])->name('duplicates');
-
-            // Update user avatar
-            Route::post('/avatar', [AdminImageController::class, 'updateAvatar'])
-                ->name('update-avatar');
+            Route::post('/avatar', [AdminImageController::class, 'updateAvatar'])->name('update-avatar');
         });
     });
 
-    // Contact Messages - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Contact Messages
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('contact-messages')->name('contact.')->middleware('permission:contact-list')->group(function () {
         Route::get('/', [AdminContactMessageController::class, 'index'])->name('index');
-
-        Route::post('/{id}/mark-replied', [AdminContactMessageController::class, 'markAsReplied'])
-            ->name('mark-replied')
-            ->middleware('permission:contact-view');
-
         Route::get('/{id}', [AdminContactMessageController::class, 'show'])
             ->name('show')
             ->middleware('permission:contact-view');
-
+        Route::post('/{id}/mark-replied', [AdminContactMessageController::class, 'markAsReplied'])
+            ->name('mark-replied')
+            ->middleware('permission:contact-view');
         Route::delete('/{id}', [AdminContactMessageController::class, 'destroy'])
             ->name('destroy')
             ->middleware('permission:contact-delete');
     });
 
-    // Advertisements - Protected
+    /*
+    |--------------------------------------------------------------------------
+    | Advertisements
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('advertisements')->name('advertisements.')->middleware('permission:advertisement-list')->group(function () {
         Route::get('/', [AdminAdvertisementController::class, 'index'])->name('index');
+        Route::get('/create', [AdminAdvertisementController::class, 'create'])
+            ->name('create')
+            ->middleware('permission:advertisement-create');
+        Route::post('/', [AdminAdvertisementController::class, 'store'])
+            ->name('store')
+            ->middleware('permission:advertisement-create');
+        Route::get('/{id}/edit', [AdminAdvertisementController::class, 'edit'])
+            ->name('edit')
+            ->middleware('permission:advertisement-edit');
+        Route::put('/{id}', [AdminAdvertisementController::class, 'update'])
+            ->name('update')
+            ->middleware('permission:advertisement-edit');
+        Route::delete('/{id}', [AdminAdvertisementController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('permission:advertisement-delete');
 
-        // Image upload/delete routes - MUST come before {id} routes
+        // Image Management
         Route::post('/upload-image', [AdminAdvertisementController::class, 'uploadImage'])
             ->name('upload-image')
             ->middleware('permission:advertisement-create|advertisement-edit');
-
         Route::post('/delete-image', [AdminAdvertisementController::class, 'deleteImage'])
             ->name('delete-image')
             ->middleware('permission:advertisement-create|advertisement-edit');
 
+        // Status Toggle
         Route::post('/{id}/toggle-status', [AdminAdvertisementController::class, 'toggleStatus'])
             ->name('toggle-status')
             ->middleware('permission:advertisement-edit');
-
-        Route::get('/create', [AdminAdvertisementController::class, 'create'])
-            ->name('create')
-            ->middleware('permission:advertisement-create');
-
-        Route::post('/', [AdminAdvertisementController::class, 'store'])
-            ->name('store')
-            ->middleware('permission:advertisement-create');
-
-        Route::get('/{id}/edit', [AdminAdvertisementController::class, 'edit'])
-            ->name('edit')
-            ->middleware('permission:advertisement-edit');
-
-        Route::put('/{id}', [AdminAdvertisementController::class, 'update'])
-            ->name('update')
-            ->middleware('permission:advertisement-edit');
-
-        Route::delete('/{id}', [AdminAdvertisementController::class, 'destroy'])
-            ->name('destroy')
-            ->middleware('permission:advertisement-delete');
     });
 });
