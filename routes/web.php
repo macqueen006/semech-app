@@ -305,29 +305,15 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     });
 
     /*
-    |--------------------------------------------------------------------------
-    | Posts
-    |--------------------------------------------------------------------------
-    */
+     |--------------------------------------------------------------------------
+     | Posts
+     |--------------------------------------------------------------------------
+     */
     Route::prefix('posts')->name('posts.')->group(function () {
         // List & Browse
         Route::get('/', [AdminPostController::class, 'index'])
             ->name('index')
             ->middleware('permission:post-list');
-        Route::get('/{slug}', [AdminPostController::class, 'show'])
-            ->name('show')
-            ->middleware('permission:post-list');
-        Route::get('/{slug}/analytics', [AdminPostController::class, 'analytics'])
-            ->name('analytics')
-            ->middleware('permission:post-list');
-        Route::get('/{id}/show', function ($id) {
-            if (!auth()->user()->can('post-list')) {
-                abort(403);
-            }
-            return response()->json(Post::with('category')->findOrFail($id));
-        })->name('show.json')->middleware('permission:post-list');
-
-        // Create
         Route::get('/create', [AdminPostController::class, 'create'])
             ->name('create')
             ->middleware('permission:post-create');
@@ -342,7 +328,25 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
             return response()->json($readingTime);
         })->name('read-time')->middleware('permission:post-create|post-edit');
 
-        // Edit
+        // Image Management - MUST come before /{slug}
+        Route::post('/upload-image', [AdminPostController::class, 'uploadImage'])->name('upload-image');
+        Route::post('/upload-editor-image', [AdminPostController::class, 'uploadEditorImage'])->name('upload-editor-image');
+        Route::get('/browse-images', [AdminPostController::class, 'browseImages'])->name('browse-images');
+        Route::get('/browse-editor-images', [AdminPostController::class, 'browseEditorImages'])->name('browse-editor-images');
+        Route::post('/cleanup-images', [AdminPostController::class, 'cleanupImages'])
+            ->name('cleanup-images')
+            ->middleware('permission:post-edit');
+
+        // Bulk Actions - MUST come before /{slug}
+        Route::post('/toggle-highlight', [AdminPostController::class, 'toggleHighlight'])->name('toggle-highlight');
+        Route::post('/bulk-delete', [AdminPostController::class, 'bulkDelete'])->name('bulk-delete');
+        Route::post('/bulk-publish', [AdminPostController::class, 'bulkPublish'])->name('bulk-publish');
+        Route::post('/bulk-unpublish', [AdminPostController::class, 'bulkUnpublish'])->name('bulk-unpublish');
+        Route::post('/bulk-change-category', [AdminPostController::class, 'bulkChangeCategory'])->name('bulk-change-category');
+        Route::post('/bulk-highlight', [AdminPostController::class, 'bulkHighlight'])->name('bulk-highlight');
+        Route::post('/bulk-remove-highlight', [AdminPostController::class, 'bulkRemoveHighlight'])->name('bulk-remove-highlight');
+
+        // Edit - MUST come before /{slug}
         Route::get('/{id}/edit', [AdminPostController::class, 'edit'])
             ->name('edit')
             ->middleware('permission:post-edit');
@@ -355,32 +359,22 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
         Route::get('/{id}/auto-save-check', [AdminPostController::class, 'autoSaveCheck'])
             ->name('auto-save-check')
             ->middleware('permission:post-edit');
+        Route::delete('/{id}/reject', [AdminPostController::class, 'reject'])
+            ->name('reject')
+            ->middleware('permission:post-edit');
+        Route::get('/{id}/show', function ($id) {
+            if (!auth()->user()->can('post-list')) {
+                abort(403);
+            }
+            return response()->json(Post::with('category')->findOrFail($id));
+        })->name('show.json')->middleware('permission:post-list');
 
-        // Delete
         Route::delete('/{id}', [AdminPostController::class, 'destroy'])
             ->name('destroy')
             ->middleware('permission:post-delete');
         Route::delete('/drafts/{id}', [AdminPostHistoryController::class, 'deleteDraft'])->name('drafts.delete');
 
-        // Image Management
-        Route::post('/upload-image', [AdminPostController::class, 'uploadImage'])->name('upload-image');
-        Route::post('/upload-editor-image', [AdminPostController::class, 'uploadEditorImage'])->name('upload-editor-image');
-        Route::get('/browse-images', [AdminPostController::class, 'browseImages'])->name('browse-images');
-        Route::get('/browse-editor-images', [AdminPostController::class, 'browseEditorImages'])->name('browse-editor-images');
-        Route::post('/cleanup-images', [AdminPostController::class, 'cleanupImages'])
-            ->name('cleanup-images')
-            ->middleware('permission:post-edit');
-
-        // Bulk Actions
-        Route::post('/toggle-highlight', [AdminPostController::class, 'toggleHighlight'])->name('toggle-highlight');
-        Route::post('/bulk-delete', [AdminPostController::class, 'bulkDelete'])->name('bulk-delete');
-        Route::post('/bulk-publish', [AdminPostController::class, 'bulkPublish'])->name('bulk-publish');
-        Route::post('/bulk-unpublish', [AdminPostController::class, 'bulkUnpublish'])->name('bulk-unpublish');
-        Route::post('/bulk-change-category', [AdminPostController::class, 'bulkChangeCategory'])->name('bulk-change-category');
-        Route::post('/bulk-highlight', [AdminPostController::class, 'bulkHighlight'])->name('bulk-highlight');
-        Route::post('/bulk-remove-highlight', [AdminPostController::class, 'bulkRemoveHighlight'])->name('bulk-remove-highlight');
-
-        // Post History
+        // Post History - MUST come before /{slug}
         Route::prefix('/{id}/edit/history')->name('history.')->middleware('permission:post-list')->group(function () {
             Route::get('/', [AdminPostHistoryController::class, 'index'])->name('index');
             Route::get('/{history_id}/show', [AdminPostHistoryController::class, 'show'])->name('show');
@@ -388,6 +382,14 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
                 ->name('revert')
                 ->middleware('permission:post-edit');
         });
+
+        // Dynamic routes - MUST BE LAST
+        Route::get('/{slug}/analytics', [AdminPostController::class, 'analytics'])
+            ->name('analytics')
+            ->middleware('permission:post-list');
+        Route::get('/{slug}', [AdminPostController::class, 'show'])
+            ->name('show')
+            ->middleware('permission:post-list');
     });
 
     /*
