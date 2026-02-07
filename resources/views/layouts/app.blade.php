@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     @yield('meta')
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://api.fontshare.com/v2/css?f[]=switzer@200,300,400,500,600,800,900&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="{{asset('favicon-96x96.png')}}" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" />
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}" />
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}" />
-    <link rel="manifest" href="{{ asset('site.webmanifest') }}" />
+    <link rel="icon" type="image/png" href="{{asset('favicon-96x96.png')}}" sizes="96x96"/>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}"/>
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}"/>
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}"/>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     @stack('styles')
@@ -493,7 +493,8 @@
                                     </a>
                                     <form method="POST" action="{{ route('logout') }}" class="w-full">
                                         @csrf
-                                        <button type="submit" class="flex items-center gap-x-3 py-2 px-3 rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none focus:outline-hidden focus:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800">
+                                        <button type="submit"
+                                                class="flex items-center gap-x-3 py-2 px-3 rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none focus:outline-hidden focus:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800">
                                             <svg class="shrink-0 mt-0.5 size-4" xmlns="http://www.w3.org/2000/svg"
                                                  width="24" height="24" viewBox="0 0 24 24" fill="none"
                                                  stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -556,7 +557,8 @@
                     <!-- End Sidebar Toggle -->
                 </div>
 
-                <button type="button" class="p-1.5 ps-2.5 w-full inline-flex items-center gap-x-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 shadow-xs hover:border-gray-300 focus:outline-hidden focus:border-gray-300 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:focus:border-neutral-600">
+                <button type="button"
+                        class="p-1.5 ps-2.5 w-full inline-flex items-center gap-x-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 shadow-xs hover:border-gray-300 focus:outline-hidden focus:border-gray-300 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600 dark:focus:border-neutral-600">
                     Quick actions
                     <span
                         class="ms-auto flex items-center gap-x-1 py-px px-1.5 border border-gray-200 rounded-md dark:border-neutral-700">
@@ -569,8 +571,10 @@
                         </span>
                 </button>
                 <!-- Dashboard Section -->
-                <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 first:border-t-0 first:pt-0 first:mt-0 dark:border-neutral-700">
-                                <span class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
+                <div
+                    class="pt-3 mt-3 flex flex-col border-t border-gray-200 first:border-t-0 first:pt-0 first:mt-0 dark:border-neutral-700">
+                                <span
+                                    class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
                                     Dashboard
                                 </span>
                     <ul class="flex flex-col gap-y-1">
@@ -578,7 +582,8 @@
                             <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                href="{{ route('admin.index') }}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                                 </svg>
                                 Home
                             </a>
@@ -588,7 +593,8 @@
                                 <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.activity.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                    href="{{ route('admin.activity.index') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                                     </svg>
                                     Activity Log
                                 </a>
@@ -609,7 +615,8 @@
                                     <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.posts.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                        href="{{ route('admin.posts.index') }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
                                         </svg>
                                         All Posts
                                     </a>
@@ -620,7 +627,8 @@
                                     <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.posts.create') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                        href="{{ route('admin.posts.create') }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 4v16m8-8H4"></path>
                                         </svg>
                                         Create Post
                                     </a>
@@ -631,7 +639,8 @@
                                     <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.posts-saved.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                        href="{{ route('admin.posts-saved.index') }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                                         </svg>
                                         Saved Drafts
                                     </a>
@@ -652,7 +661,8 @@
                                 <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.categories.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                    href="{{ route('admin.categories.index') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
                                     </svg>
                                     All Categories
                                 </a>
@@ -662,7 +672,8 @@
                                     <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.categories.create') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                        href="{{ route('admin.categories.create') }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 4v16m8-8H4"></path>
                                         </svg>
                                         Add Category
                                     </a>
@@ -675,7 +686,8 @@
                 <!-- Comments Section -->
                 @can('comment-list')
                     <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 dark:border-neutral-700">
-                                <span class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
+                                <span
+                                    class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
                                     Comments
                                 </span>
                         <ul class="flex flex-col gap-y-1">
@@ -683,7 +695,8 @@
                                 <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.comments.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                    href="{{ route('admin.comments.index') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
                                     </svg>
                                     All Comments
                                 </a>
@@ -703,7 +716,8 @@
                                 <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.subscribers.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                    href="{{ route('admin.subscribers.index') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                     </svg>
                                     All Subscribers
                                 </a>
@@ -723,7 +737,8 @@
                                 <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.contact.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                    href="{{ route('admin.contact.index') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
                                     </svg>
                                     Contact Messages
                                 </a>
@@ -743,7 +758,8 @@
                                 <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.images.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                    href="{{ route('admin.images.index') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                     </svg>
                                     Image Manager
                                 </a>
@@ -755,7 +771,8 @@
                 <!-- Advertisements Section -->
                 @can('advertisement-list')
                     <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 dark:border-neutral-700">
-                        <span class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
+                        <span
+                            class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
                             Advertising
                         </span>
                         <ul class="flex flex-col gap-y-1">
@@ -763,8 +780,10 @@
                                 <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.advertisements.index') || request()->routeIs('admin.advertisements.create') || request()->routeIs('admin.advertisements.edit') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                    href="{{ route('admin.advertisements.index') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
                                     </svg>
                                     Advertisements
                                 </a>
@@ -776,7 +795,8 @@
                 <!-- Users & Roles Section -->
                 @if(auth()->user()->can('user-list') || auth()->user()->can('role-list'))
                     <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 dark:border-neutral-700">
-                                <span class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
+                                <span
+                                    class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
                                     Users & Permissions
                                 </span>
                         <ul class="flex flex-col gap-y-1">
@@ -785,7 +805,8 @@
                                     <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.users.index') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                        href="{{ route('admin.users.index') }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                                         </svg>
                                         Users
                                     </a>
@@ -796,7 +817,8 @@
                                     <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.roles.index') || request()->routeIs('admin.roles.show') || request()->routeIs('admin.roles.create') || request()->routeIs('admin.roles.edit') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                        href="{{ route('admin.roles.index') }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                                         </svg>
                                         Roles & Permissions
                                     </a>
@@ -806,9 +828,32 @@
                     </div>
                 @endif
 
+                @if(auth()->user()->can('page-list'))
+                    <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 dark:border-neutral-700">
+                                <span
+                                    class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
+                                    Website Pages
+                                </span>
+                        <ul class="flex flex-col gap-y-1">
+                            @can('user-list')
+                                <li>
+                                    <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ (request()->routeIs('admin.pages.index') || request()->routeIs('admin.pages.edit')) ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
+                                       href="{{ route('admin.pages.index') }}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                        </svg>
+                                        Pages
+                                    </a>
+                                </li>
+                            @endcan
+                        </ul>
+                    </div>
+                @endif
                 <!-- Account Section -->
                 <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 dark:border-neutral-700">
-                            <span class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
+                            <span
+                                class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-800 dark:text-neutral-500">
                                 Account
                             </span>
                     <ul class="flex flex-col gap-y-1">
@@ -816,7 +861,8 @@
                             <a class="w-full flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg focus:outline-hidden {{ request()->routeIs('admin.profile') ? 'bg-gray-200 text-gray-800 dark:bg-neutral-800 dark:text-neutral-200' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200' }}"
                                href="{{ route('admin.profile') }}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                 </svg>
                                 Profile
                             </a>
@@ -888,7 +934,8 @@
 
             <!-- Button Group -->
             <div class="flex items-center gap-x-5">
-                    <span class="py-1.5 px-2 flex items-center justify-center gap-x-1 bg-indigo-500/10 border border-indigo-200 text-indigo-700 text-xs rounded-full py-1 hover:bg-indigo-500/20 focus:outline-hidden focus:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/20">
+                    <span
+                        class="py-1.5 px-2 flex items-center justify-center gap-x-1 bg-indigo-500/10 border border-indigo-200 text-indigo-700 text-xs rounded-full py-1 hover:bg-indigo-500/20 focus:outline-hidden focus:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/20">
                         {{ strip_tags(Illuminate\Foundation\Inspiring::quote()) }}
                     </span>
             </div>
