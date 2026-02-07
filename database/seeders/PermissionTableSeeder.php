@@ -53,6 +53,8 @@ class PermissionTableSeeder extends Seeder
             'advertisement-create',
             'advertisement-edit',
             'advertisement-delete',
+            'page-list',
+            'page-edit',
         ];
 
         foreach ($permissions as $permission) {

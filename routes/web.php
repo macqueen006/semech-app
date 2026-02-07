@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\{
     PostController as AdminPostController,
     SavedPostController as AdminSavedPostController,
     CategoryController as AdminCategoryController,
+    PageController as AdminPageController,
     CommentController as AdminCommentController,
     UserController as AdminUserController,
     RoleController as AdminRoleController,
@@ -55,11 +56,23 @@ Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('categ
 // Static Pages
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
-Route::get('/south-west-geo-data-integration', [SouthWestController::class, 'index'])->name('south.west');
+Route::get('/south-west-geo-data-integration', function () {
+    $page = \App\Models\Page::where('slug', 'south-west-geo-data-integration')->firstOrFail();
+    return view('pages.south-west', compact('page'));
+})->name('south.west');
 Route::get('/about-us', [AboutController::class, 'index'])->name('about');
-Route::get('/privacy-policy', fn() => view('pages.privacy-policy'))->name('privacy.policy');
-Route::get('/advertise', fn() => view('pages.advertise'))->name('advertise');
-Route::get('/terms-and-conditions', fn() => view('pages.terms-condition'))->name('terms.conditions');
+Route::get('/privacy-policy', function () {
+    $page = \App\Models\Page::where('slug', 'privacy-policy')->firstOrFail();
+    return view('pages.privacy-policy', compact('page'));
+})->name('privacy.policy');
+Route::get('/advertise', function () {
+    $page = \App\Models\Page::where('slug', 'advertise')->firstOrFail();
+    return view('pages.advertise', compact('page'));
+})->name('advertise');
+Route::get('/terms-and-conditions', function () {
+    $page = \App\Models\Page::where('slug', 'terms-and-conditions')->firstOrFail();
+    return view('pages.terms-condition', compact('page'));
+})->name('terms.conditions');
 
 // Newsletter
 Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
@@ -186,6 +199,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
 */
 
 Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(function () {
+    /*
+   |--------------------------------------------------------------------------
+   | Pages
+   |--------------------------------------------------------------------------
+   */
+    Route::prefix('pages')->name('pages.')->group(function () {
+        Route::get('/', [AdminPageController::class, 'index'])
+            ->name('index')
+            ->middleware('permission:page-list');
+        Route::get('/{id}/edit', [AdminPageController::class, 'edit'])
+            ->name('edit')
+            ->middleware('permission:page-edit');
+        Route::put('/{id}', [AdminPageController::class, 'update'])
+            ->name('update')
+            ->middleware('permission:page-edit');
+        // NEW: Page Image Handling Routes
+        Route::post('/upload-editor-image', [AdminPageController::class, 'uploadEditorImage'])->name('upload-editor-image');
+        Route::get('/browse-editor-images', [AdminPageController::class, 'browseEditorImages'])->name('browse-editor-images');
+        Route::post('/cleanup-images', [AdminPageController::class, 'cleanupImages'])->name('cleanup-images');
+    });
 
     /*
     |--------------------------------------------------------------------------

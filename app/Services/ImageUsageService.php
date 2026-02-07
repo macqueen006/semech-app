@@ -6,6 +6,7 @@ use App\Models\Post;
 use App\Models\SavedPost;
 use App\Models\User;
 use App\Models\Advertisement;
+use App\Models\Page;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
@@ -93,6 +94,18 @@ class ImageUsageService
             ];
         }
 
+        // Search in pages content
+        $pages = Page::where('content', 'like', '%' . $imagePath . '%')->get();
+        foreach ($pages as $page) {
+            $usages[] = [
+                'type' => 'Page',
+                'location' => 'Content',
+                'title' => $page->title,
+                'image' => '/images/default-page.jpg', // Or extract first image from content
+                'url' => route('admin.pages.edit', $page->id),
+            ];
+        }
+
         return $usages;
     }
 
@@ -139,25 +152,6 @@ class ImageUsageService
     /**
      * Calculate usage count for a single image
      */
-    /*private function calculateUsageCount(string $imagePath): int
-    {
-        $count = 0;
-
-        // Count posts with image in body
-        $count += Post::where('body', 'like', '%' . $imagePath . '%')->count();
-
-        // Count posts with image as featured image
-        $count += Post::where('image_path', $imagePath)->count();
-
-        // Count users with image as avatar
-        $count += User::where('image_path', $imagePath)->count();
-
-        // Count advertisements with image
-        $count += Advertisement::where('image_path', $imagePath)->count();
-
-        return $count;
-    }*/
-
     private function calculateUsageCount(string $imagePath): int
     {
         $count = 0;
@@ -179,6 +173,9 @@ class ImageUsageService
 
         // Count advertisements with image
         $count += Advertisement::where('image_path', $imagePath)->count();
+
+        // Count pages with image in content
+        $count += Page::where('content', 'like', '%' . $imagePath . '%')->count();
 
         return $count;
     }
@@ -209,7 +206,7 @@ class ImageUsageService
             $usageCounts[$path] = ($usageCounts[$path] ?? 0) + 1;
         }
 
-        // Get all image paths from posts (in body) - this is more complex
+        // Get all image paths from posts (in body)
         $posts = Post::where(function ($query) use ($pathPatterns) {
             foreach ($pathPatterns as $pattern) {
                 $query->orWhere('body', 'like', $pattern);
@@ -217,8 +214,37 @@ class ImageUsageService
         })->get();
 
         foreach ($posts as $post) {
-            // Extract image paths from post body
             preg_match_all('/\/images\/[a-zA-Z0-9_\-\/]+\.(jpg|jpeg|png|gif|webp|svg)/i', $post->body, $matches);
+            if (!empty($matches[0])) {
+                foreach ($matches[0] as $path) {
+                    $usageCounts[$path] = ($usageCounts[$path] ?? 0) + 1;
+                }
+            }
+        }
+
+        // Get all image paths from saved posts (featured images)
+        $savedPostImagePaths = SavedPost::whereNotNull('image_path')
+            ->where(function ($query) use ($pathPatterns) {
+                foreach ($pathPatterns as $pattern) {
+                    $query->orWhere('image_path', 'like', $pattern);
+                }
+            })
+            ->pluck('image_path')
+            ->toArray();
+
+        foreach ($savedPostImagePaths as $path) {
+            $usageCounts[$path] = ($usageCounts[$path] ?? 0) + 1;
+        }
+
+        // Get all image paths from saved posts (in body)
+        $savedPosts = SavedPost::where(function ($query) use ($pathPatterns) {
+            foreach ($pathPatterns as $pattern) {
+                $query->orWhere('body', 'like', $pattern);
+            }
+        })->get();
+
+        foreach ($savedPosts as $savedPost) {
+            preg_match_all('/\/images\/[a-zA-Z0-9_\-\/]+\.(jpg|jpeg|png|gif|webp|svg)/i', $savedPost->body, $matches);
             if (!empty($matches[0])) {
                 foreach ($matches[0] as $path) {
                     $usageCounts[$path] = ($usageCounts[$path] ?? 0) + 1;
@@ -254,6 +280,22 @@ class ImageUsageService
             $usageCounts[$path] = ($usageCounts[$path] ?? 0) + 1;
         }
 
+        // Get all image paths from pages (in content)
+        $pages = Page::where(function ($query) use ($pathPatterns) {
+            foreach ($pathPatterns as $pattern) {
+                $query->orWhere('content', 'like', $pattern);
+            }
+        })->get();
+
+        foreach ($pages as $page) {
+            preg_match_all('/\/images\/[a-zA-Z0-9_\-\/]+\.(jpg|jpeg|png|gif|webp|svg)/i', $page->content, $matches);
+            if (!empty($matches[0])) {
+                foreach ($matches[0] as $path) {
+                    $usageCounts[$path] = ($usageCounts[$path] ?? 0) + 1;
+                }
+            }
+        }
+
         return $usageCounts;
     }
 
@@ -267,6 +309,7 @@ class ImageUsageService
             'posts_featured' => Post::where('image_path', $imagePath)->count(),
             'users_avatar' => User::where('image_path', $imagePath)->count(),
             'advertisements' => Advertisement::where('image_path', $imagePath)->count(),
+            'pages_content' => Page::where('content', 'like', '%' . $imagePath . '%')->count(),
             'total' => $this->getUsageCount($imagePath),
         ];
     }
@@ -288,6 +331,9 @@ class ImageUsageService
                 ->get(),
             'advertisements' => Advertisement::where('image_path', $imagePath)
                 ->select('id', 'title', 'position', 'is_active')
+                ->get(),
+            'pages' => Page::where('content', 'like', '%' . $imagePath . '%')
+                ->select('id', 'title', 'slug')
                 ->get(),
         ];
     }

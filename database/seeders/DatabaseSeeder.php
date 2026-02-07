@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             CreateWriterUserSeeder::class,
             CreateModUserSeeder::class,
             CategoriesSeeder::class,
+            PageSeeder::class,
         ]);
 
         \App\Models\Post::factory(50)->create();
