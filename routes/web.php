@@ -178,7 +178,7 @@ require __DIR__ . '/auth.php';
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'not-admin'])->group(function () {
     // Dashboard
     Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
 

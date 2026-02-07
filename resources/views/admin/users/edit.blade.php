@@ -243,6 +243,23 @@
                     @enderror
                 </div>
 
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <label class="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            name="is_admin"
+                            value="1"
+                            {{ old('is_admin', $user->is_admin) ? 'checked' : '' }}
+                            class="form-checkbox h-4 w-4 text-red-600 rounded focus:ring-red-500">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Mark as Administrator
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block">
+                                Grants full access to admin area regardless of roles
+                            </span>
+                        </span>
+                    </label>
+                </div>
+
                 <!-- Send Email -->
                 <div>
                     <label class="flex items-center gap-2">

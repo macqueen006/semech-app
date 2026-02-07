@@ -91,6 +91,7 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8',
             'roles' => 'required|array',
+            'is_admin' => 'nullable|boolean',
         ]);
 
         $user = User::create([
@@ -99,6 +100,7 @@ class UserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'image_path' => '/images/user.jpg',
+            'is_admin' => $request->has('is_admin') ? 1 : 0,
         ]);
 
         $user->assignRole($validated['roles']);
@@ -195,6 +197,7 @@ class UserController extends Controller
             'password' => 'nullable|min:8',
             'roles' => 'required|array',
             'image_path' => 'nullable|string',
+            'is_admin' => 'nullable|boolean',
         ]);
 
         $oldRole = $user->roles->isNotEmpty() ? $user->roles[0]->name : null;
@@ -204,6 +207,7 @@ class UserController extends Controller
             'firstname' => $validated['firstname'],
             'lastname' => $validated['lastname'],
             'email' => $validated['email'],
+            'is_admin' => $validated['is_admin'],
         ];
 
         // Handle password

@@ -14,8 +14,10 @@ class EnsureUserHasRole
             return redirect()->route('login');
         }
 
-        if (!auth()->user()->roles()->exists()) {
-            abort(403, 'Access Denied. You do not have permission to access this area.');
+        if (!auth()->user()->isAdmin()) {
+            return redirect()
+                ->route('dashboard')
+                ->with('warning', 'That area is restricted to administrators.');
         }
 
         return $next($request);

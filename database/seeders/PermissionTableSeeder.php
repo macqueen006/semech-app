@@ -72,3 +72,23 @@ class PermissionTableSeeder extends Seeder
         }
     }
 }
+
+/*$newPermissions = ['page-list', 'page-edit'];
+
+foreach ($newPermissions as $permission) {
+    if (!\Spatie\Permission\Models\Permission::where('name', $permission)->exists()) {
+        \Spatie\Permission\Models\Permission::create(['name' => $permission, 'guard_name' => 'web']);
+        echo "Created: {$permission}\n";
+    } else {
+        echo "Already exists: {$permission}\n";
+    }
+}
+
+app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+echo "Done!\n";
+exit
+
+$role = \Spatie\Permission\Models\Role::where('name', 'admin')->first();
+$role->givePermissionTo(['page-list', 'page-edit']);
+echo "Permissions assigned to admin role!\n";
+exit*/
