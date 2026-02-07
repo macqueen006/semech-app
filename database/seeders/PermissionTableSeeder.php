@@ -56,6 +56,16 @@ class PermissionTableSeeder extends Seeder
             'page-list',
             'page-edit',
         ];
+        foreach ($permissions as $permission) {
+            // Use firstOrCreate instead of create
+            Permission::firstOrCreate(
+                ['name' => $permission],
+                ['guard_name' => 'web']
+            );
+        }
+
+        // Clear permission cache
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         foreach ($permissions as $permission) {
             Permission::create(['name' => $permission]);
