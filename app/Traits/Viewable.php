@@ -25,34 +25,77 @@ trait Viewable
     }
 
     /**
-     * OPTIMIZED: Record a view without blocking the response
+     * OPTIMIZED: Record a view with deduplication
      *
-     * Strategy for small applications without Redis:
-     * - Increment counter immediately (fast, no INSERT)
-     * - Sample 10% of views for detailed tracking
-     * - Queue detailed tracking to not block response
+     * Only counts as a view if:
+     * - Same user hasn't viewed in last 24 hours (session-based)
+     * - Same IP hasn't viewed in last 24 hours (for logged-out users)
+     *
+     * This prevents refresh spam and gives organic view counts
      */
     public function recordView($request = null): void
     {
-        // CRITICAL: Increment counter immediately (fast, just an UPDATE)
-        // This updates posts.view_count directly without INSERT overhead
+        $request = $request ?? request();
+
+        // Generate unique identifier for this user/post combination
+        $identifier = $this->getViewIdentifier($request);
+        $cacheKey = "post_view_{$this->id}_{$identifier}";
+
+        // Check if this user/IP has already viewed this post in last 24 hours
+        if (Cache::has($cacheKey)) {
+            // Already counted this view, skip
+            return;
+        }
+
+        // Mark this view as counted (expires in 24 hours)
+        Cache::put($cacheKey, true, now()->addHours(24));
+
+        // Increment the view counter
         $this->increment('view_count');
 
-        // Invalidate related posts cache every 10 views to avoid excessive cache churn
-        // Only clear when it actually matters (multiples of 10)
+        // Invalidate related posts cache every 10 views
         if ($this->view_count % 10 === 0 && $this->category_id) {
             Cache::forget("related_posts.category_{$this->category_id}.exclude_{$this->id}");
         }
 
-        // OPTIMIZATION: Sample detailed tracking at 10% rate
-        // For detailed analytics (IP, user agent, referrer)
-        // This reduces DB writes by 90% while maintaining statistical accuracy
+        // Sample 10% of views for detailed tracking (IP, user agent, etc.)
         if (rand(1, 10) === 1) {
-            // Queue the detailed tracking to not block response
             dispatch(function () use ($request) {
                 PostView::recordView($this, $request);
             })->afterResponse();
         }
+    }
+
+    /**
+     * Generate unique identifier for view deduplication
+     * Priority: User ID > Session ID > IP Address
+     */
+    private function getViewIdentifier($request): string
+    {
+        // If user is logged in, use their user ID
+        if (auth()->check()) {
+            return 'user_' . auth()->id();
+        }
+
+        // If user has a session, use session ID
+        if ($request->hasSession()) {
+            return 'session_' . $request->session()->getId();
+        }
+
+        // Fallback to IP address (for users without sessions)
+        return 'ip_' . md5($request->ip());
+    }
+
+    /**
+     * Check if current user has viewed this post (useful for UI indicators)
+     */
+    public function hasBeenViewedByCurrentUser($request = null): bool
+    {
+        $request = $request ?? request();
+        $identifier = $this->getViewIdentifier($request);
+        $cacheKey = "post_view_{$this->id}_{$identifier}";
+
+        return Cache::has($cacheKey);
     }
 
     /**
@@ -79,10 +122,6 @@ trait Viewable
 
     /**
      * Get cached view count with formatted display
-     * Use this in views instead of direct attribute access
-     *
-     * Note: Formatted view count is already cached in Post model
-     * via getFormattedViewCountAttribute() accessor
      */
     public function getFormattedViewCountAttribute()
     {
