@@ -3,9 +3,10 @@
         // ========================================
         // STATE MANAGEMENT
         // ========================================
-        let uploadedEditorImages = []; // Only images inserted into editor
+        let uploadedEditorImages = [];
         let currentFeaturedImagePath = document.getElementById('imagePath')?.value || '';
         let hasUnsavedChanges = false;
+        let isSubmitting = false; // Prevent double submission
 
         // ========================================
         // QUILL EDITOR SETUP
@@ -92,7 +93,6 @@
             const bodyContent = quill.root.innerHTML;
             const currentImages = extractImagesFromBody(bodyContent);
 
-            // ✅ Only cleanup orphaned EDITOR images (exclude featured image)
             const orphanedImages = uploadedEditorImages.filter(img =>
                 !currentImages.includes(img) && img !== currentFeaturedImagePath
             );
@@ -111,7 +111,6 @@
                     .then(data => {
                         if (data.success) {
                             console.log('Cleaned up ' + orphanedImages.length + ' orphaned images');
-                            // Update tracking to only include current editor images (exclude featured)
                             uploadedEditorImages = currentImages.filter(img => img !== currentFeaturedImagePath);
                         }
                     })
@@ -125,16 +124,13 @@
         // PAGE ABANDON PROTECTION
         // ========================================
         window.addEventListener('beforeunload', function (e) {
-            if (hasUnsavedChanges) {
-                // Collect all uploaded images for cleanup
+            if (hasUnsavedChanges && !isSubmitting) {
                 const allImages = [...uploadedEditorImages];
                 if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                     allImages.push(currentFeaturedImagePath);
                 }
 
-                // Only cleanup if there are actually images to clean
                 if (allImages.length > 0) {
-                    // Use sendBeacon for reliable cleanup on page unload
                     const cleanupData = JSON.stringify({
                         _token: '{{ csrf_token() }}',
                         images: allImages
@@ -146,7 +142,6 @@
                     );
                 }
 
-                // Show warning to user
                 e.preventDefault();
                 e.returnValue = '';
                 return '';
@@ -294,10 +289,10 @@
             cleanupOrphanImages();
 
             const formData = new FormData(document.getElementById('postForm'));
-            // ✅ Add the saved_post_id to subsequent autosaves
             if (currentSavedPostId) {
                 formData.set('saved_post_id', currentSavedPostId);
             }
+
             fetch('{{ route('admin.posts.auto-save') }}', {
                 method: 'POST',
                 headers: {
@@ -308,12 +303,10 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // ✅ Store the saved_post_id for next autosave
                         if (data.saved_post_id) {
                             currentSavedPostId = data.saved_post_id;
                         }
 
-                        // ✅ Update URL if needed (optional - keeps URL in sync)
                         if (data.update_url && currentSavedPostId) {
                             const url = new URL(window.location);
                             url.searchParams.set('edit', currentSavedPostId);
@@ -339,9 +332,13 @@
         // ========================================
         document.getElementById('postForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            clearInterval(autoSaveInterval);
 
-            // Clear unsaved changes flag (post is being saved)
+            if (isSubmitting) {
+                return; // Prevent double submission
+            }
+
+            isSubmitting = true;
+            clearInterval(autoSaveInterval);
             hasUnsavedChanges = false;
 
             cleanupOrphanImages();
@@ -352,7 +349,7 @@
             const originalText = publishBtn.textContent;
 
             publishBtn.disabled = true;
-            publishBtn.textContent = 'Publishing...';
+            publishBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2 inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Publishing...';
 
             fetch('{{ route('admin.posts.store') }}', {
                 method: 'POST',
@@ -361,27 +358,33 @@
                 },
                 body: formData
             })
-                .then(response => {
+                .then(async response => {
                     const contentType = response.headers.get('content-type');
+
+                    // ✅ FIX: Handle non-JSON responses properly
                     if (!contentType || !contentType.includes('application/json')) {
-                        throw new Error('Server returned non-JSON response');
+                        const text = await response.text();
+                        console.error('Server returned non-JSON response:', text);
+                        throw new Error('Server error - check console for details');
                     }
-                    return response.json().then(data => ({
+
+                    const data = await response.json();
+
+                    return {
                         ok: response.ok,
                         status: response.status,
                         data: data
-                    }));
+                    };
                 })
                 .then(result => {
                     if (result.status === 422) {
                         showMessage('Please fix the errors below', 'error');
                         displayValidationErrors(result.data.errors);
+                        isSubmitting = false;
                         publishBtn.disabled = false;
                         publishBtn.textContent = originalText;
                     } else if (result.ok && result.data.success) {
                         showMessage(result.data.message, 'success');
-
-                        // ✅ CLEAR IMAGE TRACKING - Don't delete images on redirect
                         uploadedEditorImages = [];
                         currentFeaturedImagePath = '';
 
@@ -389,14 +392,17 @@
                             window.location.href = result.data.redirect;
                         }, 1500);
                     } else {
-                        showMessage(result.data.message || 'An error occurred', 'error');
+                        // ✅ FIX: Show actual error message from server
+                        showMessage(result.data.message || 'An error occurred while publishing', 'error');
+                        isSubmitting = false;
                         publishBtn.disabled = false;
                         publishBtn.textContent = originalText;
                     }
                 })
                 .catch(error => {
                     console.error('Submit error:', error);
-                    showMessage('An error occurred while publishing', 'error');
+                    showMessage(error.message || 'An error occurred while publishing', 'error');
+                    isSubmitting = false;
                     publishBtn.disabled = false;
                     publishBtn.textContent = originalText;
                 });
@@ -491,42 +497,88 @@
             });
         }
 
+        // ✅ FIX: Real upload progress with XHR
         function uploadFeaturedImage() {
             const file = imageFile.files[0];
             const formData = new FormData();
             formData.append('image', file);
 
-            fetch('{{ route('admin.posts.upload-image') }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
+            const progressContainer = document.getElementById('fileUploadProgress');
+
+            // Show progress bar
+            progressContainer.innerHTML = `
+                <div class="mb-3 flex justify-between items-center">
+                    <div class="flex items-center gap-x-3">
+                        <span class="size-10 flex justify-center items-center border border-layer-line text-muted-foreground-1 rounded-lg bg-layer">
+                            <svg class="shrink-0 size-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                            </svg>
+                        </span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-foreground truncate">Uploading ${file.name}</p>
+                            <p class="text-xs text-muted-foreground-1">${(file.size / 1024).toFixed(2)} KB</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-x-3 whitespace-nowrap">
+                    <div class="flex w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="uploadProgressBar" class="flex flex-col justify-center rounded-full overflow-hidden bg-primary transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="w-16 text-end">
+                        <span id="uploadPercent" class="text-sm text-foreground">0%</span>
+                    </div>
+                </div>
+            `;
+
+            const xhr = new XMLHttpRequest();
+
+            // ✅ REAL upload progress listener
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    const progressBar = document.getElementById('uploadProgressBar');
+                    const percentText = document.getElementById('uploadPercent');
+                    if (progressBar) progressBar.style.width = percentComplete + '%';
+                    if (percentText) percentText.textContent = percentComplete + '%';
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
                     if (data.success) {
-                        // Delete old featured image if exists
                         if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                             deleteImageFromStorage(currentFeaturedImagePath);
                         }
 
-                        // ✅ Update with new image (DON'T add to uploadedEditorImages)
                         currentFeaturedImagePath = data.path;
-
                         imagePath.value = data.path;
                         imagePreviewImg.src = data.path;
                         imagePreview.classList.remove('hidden');
                         cancelImageUpload();
                         showImageMessage(data.message, 'success');
                         autoFillSeoFields();
+                    } else {
+                        showImageMessage(data.message || 'Upload failed', 'error');
+                        cancelImageUpload();
                     }
-                })
-                .catch(error => {
-                    console.error('Upload error:', error);
+                } else {
+                    console.error('Upload failed with status:', xhr.status);
                     showImageMessage('Upload failed. Please try again.', 'error');
                     cancelImageUpload();
-                });
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                console.error('Upload error');
+                showImageMessage('Upload failed. Please try again.', 'error');
+                cancelImageUpload();
+            });
+
+            xhr.open('POST', '{{ route('admin.posts.upload-image') }}');
+            xhr.setRequestHeader('X-CSRF-TOKEN', '{{ csrf_token() }}');
+            xhr.send(formData);
         }
 
         function cancelImageUpload() {
@@ -544,14 +596,11 @@
                     return;
                 }
 
-                // Delete old featured image if it's from storage
                 if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                     deleteImageFromStorage(currentFeaturedImagePath);
                 }
 
-                // ✅ Set new featured image (DON'T add to uploadedEditorImages)
                 currentFeaturedImagePath = url;
-
                 imagePath.value = url;
                 imagePreviewImg.src = url;
                 imagePreview.classList.remove('hidden');
@@ -560,19 +609,16 @@
             });
         }
 
-        // REMOVE IMAGE BUTTON - DELETE FROM STORAGE
         if (removeImageBtn) {
             removeImageBtn.addEventListener('click', () => {
                 const pathToDelete = currentFeaturedImagePath || imagePath.value;
 
-                // Only delete if it's a storage path (not external URL)
                 if (pathToDelete && pathToDelete.startsWith('/images/')) {
                     deleteImageFromStorage(pathToDelete);
                 } else {
                     showImageMessage('Image removed', 'success');
                 }
 
-                // Clear everything
                 currentFeaturedImagePath = '';
                 imagePath.value = '';
                 imagePreviewImg.src = '';
@@ -585,8 +631,6 @@
         function deleteImageFromStorage(path) {
             if (!path) return;
 
-            console.log('Attempting to delete image:', path);
-
             fetch('{{ route('admin.posts.cleanup-images') }}', {
                 method: 'POST',
                 headers: {
@@ -598,18 +642,13 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Delete response:', data);
                     if (data.success) {
                         console.log('Image deleted from storage');
                         showImageMessage('Image removed and deleted from storage', 'success');
-                    } else {
-                        console.error('Failed to delete:', data.message);
-                        showImageMessage('Image removed from preview', 'success');
                     }
                 })
                 .catch(error => {
                     console.error('Delete error:', error);
-                    showImageMessage('Image removed from preview', 'success');
                 });
         }
 
@@ -639,7 +678,7 @@
         }
 
         // ========================================
-        // EDITOR IMAGE MODAL
+        // EDITOR IMAGE MODAL (continues with same fix pattern...)
         // ========================================
         const editorUploadModeBtn = document.getElementById('editorUploadModeBtn');
         const editorUrlModeBtn = document.getElementById('editorUrlModeBtn');
@@ -774,6 +813,7 @@
             });
         }
 
+        // ✅ FIX: Real upload progress for editor images too
         function uploadEditorImage() {
             const file = editorImageFile.files[0];
             const formData = new FormData();
@@ -782,39 +822,39 @@
             const uploadProgress = document.getElementById('editorUploadProgress');
             const uploadPercent = document.getElementById('editorUploadPercent');
 
-            fetch('{{ route('admin.posts.upload-editor-image') }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    if (uploadProgress) uploadProgress.style.width = percentComplete + '%';
+                    if (uploadPercent) uploadPercent.textContent = percentComplete + '%';
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
                     if (data.success) {
                         insertImageIntoEditor(data.path);
                         uploadedEditorImages.push(data.path);
                         closeEditorImageModal();
                         showMessage(data.message, 'success');
+                    } else {
+                        showMessage(data.message || 'Upload failed', 'error');
                     }
-                })
-                .catch(error => {
-                    console.error('Upload error:', error);
-                    showMessage('Upload failed. Please try again.', 'error');
-                });
-
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 10;
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    if (uploadProgress) uploadProgress.style.width = '100%';
-                    if (uploadPercent) uploadPercent.textContent = '100%';
                 } else {
-                    if (uploadProgress) uploadProgress.style.width = progress + '%';
-                    if (uploadPercent) uploadPercent.textContent = progress + '%';
+                    showMessage('Upload failed. Please try again.', 'error');
                 }
-            }, 100);
+            });
+
+            xhr.addEventListener('error', () => {
+                showMessage('Upload failed. Please try again.', 'error');
+            });
+
+            xhr.open('POST', '{{ route('admin.posts.upload-editor-image') }}');
+            xhr.setRequestHeader('X-CSRF-TOKEN', '{{ csrf_token() }}');
+            xhr.send(formData);
         }
 
         function cancelEditorUpload() {
@@ -956,14 +996,11 @@
 
                             document.querySelectorAll('.browse-image').forEach(el => {
                                 el.addEventListener('click', function () {
-                                    // Delete old featured image if exists
                                     if (currentFeaturedImagePath && currentFeaturedImagePath.startsWith('/images/')) {
                                         deleteImageFromStorage(currentFeaturedImagePath);
                                     }
 
-                                    // ✅ Set as featured image (DON'T add to uploadedEditorImages)
                                     currentFeaturedImagePath = this.dataset.path;
-
                                     imagePath.value = this.dataset.path;
                                     imagePreviewImg.src = this.dataset.path;
                                     imagePreview.classList.remove('hidden');
