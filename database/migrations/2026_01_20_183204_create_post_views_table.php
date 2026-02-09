@@ -22,6 +22,7 @@ return new class extends Migration
             $table->timestamp('viewed_at');
 
             $table->index(['post_id', 'viewed_at']);
+            $table->index('ip_address', 'idx_views_ip_tracking');
             $table->index('viewed_at');
         });
     }

@@ -27,6 +27,9 @@ return new class extends Migration
             $table->integer('clicks')->default(0);
             $table->integer('impressions')->default(0);
             $table->timestamps();
+
+            $table->index(['position', 'is_active', 'start_date', 'end_date'], 'idx_ads_active_by_position');
+            $table->index(['is_active', 'display_order'], 'idx_ads_display_order');
         });
     }
 

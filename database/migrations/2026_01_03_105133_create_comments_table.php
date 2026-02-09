@@ -24,8 +24,9 @@ return new class extends Migration
             $table->foreign('post_id')->references('id')->on('posts')->onDelete('cascade');
             $table->timestamps();
 
-            $table->index(['post_id', 'parent_id', 'is_approved']);
-            $table->index('created_at');
+            $table->index(['post_id', 'is_approved', 'created_at'], 'idx_comments_approved_sorted');
+            $table->index(['parent_id', 'is_approved'], 'idx_comments_replies');
+            $table->index(['is_approved', 'created_at'], 'idx_comments_recent');
         });
     }
 

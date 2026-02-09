@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Pages;
 
 use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
+use App\Models\Comment;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PostController extends Controller
 {
@@ -16,37 +18,40 @@ class PostController extends Controller
         $page = $request->get('page', 1);
         $offset = ($page - 1) * $perPage;
 
-        $posts = Post::with([
-            'category' => fn($q) => $q->select('id', 'name', 'backgroundColor', 'textColor'),
-            'user' => fn($q) => $q->select('id', 'firstname', 'lastname', 'image_path'),
-        ])
+        // OPTIMIZED: Use pagination instead of manual offset
+        $posts = Post::query()
+            ->with([
+                'category:id,name,backgroundColor,textColor',
+                'user:id,firstname,lastname,image_path',
+            ])
+            ->leftJoin('highlight_posts', 'posts.id', '=', 'highlight_posts.post_id')
             ->isLive()
             ->notExpired()
-            ->select('posts.*', \DB::raw('(SELECT COUNT(*) FROM highlight_posts WHERE post_id = posts.id) > 0 AS is_highlighted'))
-            ->offset($offset)
-            ->limit($perPage)
-            ->orderBy('id', 'desc')
-            ->get();
+            ->select('posts.*', \DB::raw('highlight_posts.id IS NOT NULL as is_highlighted'))
+            ->orderBy('posts.id', 'desc')
+            ->paginate($perPage);
 
-        $totalPosts = Post::isLive()->notExpired()->count();
-        $hasMore = $totalPosts > ($offset + $perPage);
-        $hasPrevious = $page > 1;
+        // OPTIMIZED: Cache active ads for 15 minutes
+        // Ads don't change frequently
+        $betweenPostsAds = Cache::remember('ads.between_posts', 900, function () {
+            return Advertisement::where('position', 'between-posts')
+                ->where('is_active', true)
+                ->where(function ($query) {
+                    $query->whereNull('start_date')
+                        ->orWhere('start_date', '<=', now());
+                })
+                ->where(function ($query) {
+                    $query->whereNull('end_date')
+                        ->orWhere('end_date', '>=', now());
+                })
+                ->orderBy('display_order')
+                ->get();
+        });
 
-        // Get all active between-posts ads for rotation
-        $betweenPostsAds = Advertisement::where('position', 'between-posts')
-            ->where('is_active', true)
-            ->where(function ($query) {
-                $query->whereNull('start_date')
-                    ->orWhere('start_date', '<=', now());
-            })
-            ->where(function ($query) {
-                $query->whereNull('end_date')
-                    ->orWhere('end_date', '>=', now());
-            })
-            ->orderBy('display_order')
-            ->get();
-
-        return view('pages.articles', compact('posts', 'betweenPostsAds', 'offset', 'page', 'hasMore', 'hasPrevious'));
+        return view('pages.articles', [
+            'posts' => $posts,
+            'betweenPostsAds' => $betweenPostsAds,
+        ]);
     }
 
     public function trackAdClick(Request $request)
@@ -59,7 +64,11 @@ class PostController extends Controller
             $advertisement = Advertisement::find($request->advertisement_id);
 
             if ($advertisement && $advertisement->isCurrentlyActive()) {
-                $advertisement->recordClick();
+                // OPTIMIZED: Use increment instead of full model save
+                $advertisement->increment('clicks');
+
+                // Clear ad cache when click is tracked
+                Cache::forget('ads.between_posts');
 
                 return response()->json([
                     'success' => true,
@@ -84,19 +93,20 @@ class PostController extends Controller
 
     public function show($slug)
     {
-        $post = Post::with(['comments.replies.replies.replies.user', 'category', 'user'])
+        // OPTIMIZED: Don't load ALL comments at once - that's insane for popular posts
+        // Load only top-level comments, paginate them
+        $post = Post::with([
+            'category:id,name,slug,backgroundColor,textColor',
+            'user:id,firstname,lastname,image_path'
+        ])
             ->where('slug', $slug)
             ->firstOrFail();
 
-        $post->recordView();
-
-        $user = User::find($post->user_id);
-
-        // Check if post is published
-        if (!$post->is_published) {
+        // Check if post is visible
+        if (!$post->isVisible()) {
             if (auth()->check()) {
                 // Allow viewing if user is the author or has permission
-                if (auth()->id() != $user->id && !auth()->user()->hasPermissionTo('post-super-list')) {
+                if (auth()->id() != $post->user_id && !auth()->user()->hasPermissionTo('post-super-list')) {
                     abort(404);
                 }
             } else {
@@ -104,27 +114,93 @@ class PostController extends Controller
             }
         }
 
-        // Get related posts
-        $relatedPosts = Post::where('category_id', $post->category_id)
-            ->where('id', '!=', $post->id)
-            ->where('is_published', true)
-            ->with(['category', 'user'])
-            ->orderBy('view_count', 'desc')
-            ->limit(3)
-            ->get();
+        // OPTIMIZED: Paginate comments instead of loading all 4 levels
+        // Load first 2 levels only, lazy-load deeper nesting via AJAX
+        $comments = $post->comments()
+            ->with([
+                'user:id,firstname,lastname,image_path',
+                'replies' => function ($q) {
+                    $q->with('user:id,firstname,lastname,image_path')
+                        ->where('is_approved', true)
+                        ->orderBy('created_at', 'desc');
+                }
+            ])
+            ->where('is_approved', true)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
-        // If we don't have enough related posts, fill with recent popular posts
-        if ($relatedPosts->count() < 3) {
-            $additionalPosts = Post::where('id', '!=', $post->id)
-                ->where('is_published', true)
-                ->whereNotIn('id', $relatedPosts->pluck('id'))
-                ->with(['category', 'user'])
+        // OPTIMIZED: Cache related posts per category for 30 minutes
+        $cacheKey = "related_posts.category_{$post->category_id}.exclude_{$post->id}";
+
+        $relatedPosts = Cache::remember($cacheKey, 1800, function () use ($post) {
+            $categoryPosts = Post::query()
+                ->where('category_id', $post->category_id)
+                ->where('id', '!=', $post->id)
+                ->isLive()
+                ->notExpired()
+                ->select('id', 'title', 'slug', 'excerpt', 'image_path', 'category_id', 'user_id', 'view_count', 'created_at')
+                ->with([
+                    'category:id,name,slug,backgroundColor,textColor',
+                    'user:id,firstname,lastname,image_path'
+                ])
                 ->orderBy('view_count', 'desc')
-                ->limit(3 - $relatedPosts->count())
+                ->limit(3)
                 ->get();
 
-            $relatedPosts = $relatedPosts->merge($additionalPosts);
-        }
-        return view('pages.article', compact('post', 'relatedPosts'));
+            // OPTIMIZED: Only run second query if needed
+            if ($categoryPosts->count() < 3) {
+                $additionalCount = 3 - $categoryPosts->count();
+
+                $additionalPosts = Post::query()
+                    ->where('id', '!=', $post->id)
+                    ->whereNotIn('id', $categoryPosts->pluck('id'))
+                    ->isLive()
+                    ->notExpired()
+                    ->select('id', 'title', 'slug', 'excerpt', 'image_path', 'category_id', 'user_id', 'view_count', 'created_at')
+                    ->with([
+                        'category:id,name,slug,backgroundColor,textColor',
+                        'user:id,firstname,lastname,image_path'
+                    ])
+                    ->orderBy('view_count', 'desc')
+                    ->limit($additionalCount)
+                    ->get();
+
+                return $categoryPosts->merge($additionalPosts);
+            }
+
+            return $categoryPosts;
+        });
+
+        // OPTIMIZED: Queue view tracking instead of blocking response
+        // Move to observer or queue job
+        dispatch(function () use ($post) {
+            $post->recordView();
+        })->afterResponse();
+
+        return view('pages.article', compact('post', 'relatedPosts', 'comments'));
+    }
+
+    /**
+     * Load more comments via AJAX (implement this for nested comments)
+     */
+    public function loadMoreComments(Request $request, $postId)
+    {
+        $page = $request->get('page', 1);
+
+        $comments = Comment::where('post_id', $postId)
+            ->whereNull('parent_id')
+            ->where('is_approved', true)
+            ->with([
+                'user:id,firstname,lastname,image_path',
+                'replies' => function ($q) {
+                    $q->with('user:id,firstname,lastname,image_path')
+                        ->where('is_approved', true)
+                        ->limit(5); // Limit replies shown initially
+                }
+            ])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return response()->json($comments);
     }
 }

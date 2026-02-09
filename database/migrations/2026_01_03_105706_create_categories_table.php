@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('backgroundColor');
             $table->string('textColor');
             $table->timestamps();
+
+            $table->index('name', 'idx_categories_name');
+            $table->index('slug', 'idx_categories_slug');
         });
     }
 

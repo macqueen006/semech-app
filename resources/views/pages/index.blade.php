@@ -38,7 +38,7 @@
         {{--    <x-modals.newsletter-modal :showNewsletterModal="$showNewsletterModal"/>--}}
 
         <!-- Recent Posts -->
-        <x-sections.recent-posts :posts="$allPosts" loadMore="loadMore"/>
+        <x-sections.recent-posts :posts="$posts" loadMore="loadMore"/>
         <!-- End Recent Posts -->
         <!-- ads footer -->
         <x-ads.footer />

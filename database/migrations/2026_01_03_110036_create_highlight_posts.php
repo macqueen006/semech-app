@@ -13,9 +13,11 @@ return new class extends Migration
     {
         Schema::create('highlight_posts', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('post_id');
+            $table->unsignedBigInteger('post_id')->unique();
             $table->foreign('post_id')->references('id')->on('posts')->onDelete('cascade');
             $table->timestamps();
+
+            $table->index('post_id', 'idx_highlight_post_id');
         });
     }
 

@@ -6,83 +6,120 @@ use App\Http\Controllers\Controller;
 use App\Models\HighlightPost;
 use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
-    public int $offset = 0;
+    /**
+     * Display the homepage with optimized queries
+     */
     public function index()
     {
-        $posts = Post::with([
-            'category' => fn($q) => $q->select('id', 'name', 'backgroundColor', 'textColor'),
-            'user' => fn($q) => $q->select('id', 'firstname', 'lastname', 'image_path'),
-        ])
+        // OPTIMIZED: Single query with LEFT JOIN instead of correlated subquery
+        // Eliminates subquery that ran for every post row
+        $posts = Post::query()
+            ->with([
+                'category:id,slug,name,backgroundColor,textColor',
+                'user:id,firstname,lastname,image_path',
+            ])
+            ->leftJoin('highlight_posts', 'posts.id', '=', 'highlight_posts.post_id')
             ->isLive()
             ->notExpired()
-            ->select('posts.*', \DB::raw('(SELECT COUNT(*) FROM highlight_posts WHERE post_id = posts.id) > 0 AS is_highlighted'))
-            ->limit(20)
-            ->orderBy('id', 'desc')
-            ->get();
-
-        $allPosts = Post::with([
-            'category' => fn($q) => $q->select('id', 'name', 'backgroundColor', 'textColor'),
-            'user' => fn($q) => $q->select('id', 'firstname', 'lastname', 'image_path'),
-        ])
-            ->isLive()
-            ->notExpired()
-            ->select('posts.*', \DB::raw('(SELECT COUNT(*) FROM highlight_posts WHERE post_id = posts.id) > 0 AS is_highlighted'))
-            ->offset($this->offset)
+            ->select('posts.*', DB::raw('highlight_posts.id IS NOT NULL as is_highlighted'))
+            ->orderBy('posts.id', 'desc')
             ->limit(5)
-            ->orderBy('id', 'desc')
             ->get();
 
+        // OPTIMIZED: Cache highlighted posts for 5 minutes
+        // Fixed N+1: Added ->with('post') to eager load relationship
+        $highlightedPosts = Cache::remember('homepage.highlighted_posts', 300, function () {
+            return HighlightPost::with([
+                'post' => function ($q) {
+                    $q->select('id', 'title', 'slug', 'excerpt', 'image_path', 'category_id', 'user_id', 'created_at', 'is_published', 'image_alt', 'read_time')
+                        ->with([
+                            'category:id,slug,name,backgroundColor,textColor',
+                            'user:id,firstname,lastname,image_path'
+                        ]);
+                }
+            ])
+                ->whereHas('post', fn($q) => $q->where('is_published', true))
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+        });
 
-        $highlightedPosts = HighlightPost::whereHas('post', fn($q) => $q->where('is_published', 1))->get();
+        // OPTIMIZED: Cache trending topics for 10 minutes
+        // Trending calculation is expensive (30-day aggregation)
+        $trendingTopics = Cache::remember('homepage.trending_topics', 600, function () {
+            return Post::query()
+                ->with('category:id,name,slug,backgroundColor,textColor')
+                ->isLive()
+                ->notExpired()
+                ->where('created_at', '>=', now()->subDays(30))
+                ->orderBy('view_count', 'desc')
+                ->limit(7)
+                ->get(['id', 'title', 'slug', 'view_count', 'category_id', 'created_at']);
+        });
 
-        $trendingTopics = Post::with('category')
-            ->isLive()
-            ->notExpired()
-            ->where('created_at', '>=', now()->subDays(30))
-            ->orderBy('view_count', 'desc')
-            ->limit(7)
-            ->get();
-
-        $popularPosts = Post::with('category', 'user')
-            ->isLive()
-            ->notExpired()
-            ->orderBy('view_count', 'desc')
-            ->limit(3)
-            ->get();
+        // OPTIMIZED: Cache popular posts for 10 minutes
+        $popularPosts = Cache::remember('homepage.popular_posts', 600, function () {
+            return Post::query()
+                ->with([
+                    'category:id,name,slug,backgroundColor,textColor',
+                    'user:id,firstname,lastname,image_path'
+                ])
+                ->isLive()
+                ->notExpired()
+                ->orderBy('view_count', 'desc')
+                ->limit(3)
+                ->get(['id', 'title', 'slug', 'excerpt', 'image_path', 'category_id', 'user_id', 'view_count', 'created_at']);
+        });
 
         return view('pages.index', [
             'posts' => $posts,
-            'allPosts' => $allPosts,
             'highlightedPosts' => $highlightedPosts,
             'trendingTopics' => $trendingTopics,
             'popularPosts' => $popularPosts
         ]);
     }
 
+    /**
+     * Load more posts for infinite scroll
+     */
     public function loadMore(Request $request)
     {
         $offset = $request->input('offset', 0);
 
-        $posts = Post::with([
-            'category' => fn($q) => $q->select('id', 'name', 'backgroundColor', 'textColor'),
-            'user' => fn($q) => $q->select('id', 'firstname', 'lastname', 'image_path'),
-        ])
+        // Same optimization as main query
+        $posts = Post::query()
+            ->with([
+                'category:id,name,slug,backgroundColor,textColor',
+                'user:id,firstname,lastname,image_path',
+            ])
+            ->leftJoin('highlight_posts', 'posts.id', '=', 'highlight_posts.post_id')
             ->isLive()
             ->notExpired()
-            ->select('posts.*', \DB::raw('(SELECT COUNT(*) FROM highlight_posts WHERE post_id = posts.id) > 0 AS is_highlighted'))
+            ->select('posts.*', DB::raw('highlight_posts.id IS NOT NULL as is_highlighted'))
             ->offset($offset)
             ->limit(5)
-            ->orderBy('id', 'desc')
+            ->orderBy('posts.id', 'desc')
             ->get();
 
-        return response()->json(['posts' => $posts]);
+        return response()->json([
+            'posts' => $posts,
+            'hasMore' => $posts->count() === 5
+        ]);
     }
 
-    public function show()
+    /**
+     * Clear homepage caches
+     * Call this when posts are published/updated (via PostObserver)
+     */
+    public static function clearCache(): void
     {
-        return view('pages.article');
+        Cache::forget('homepage.highlighted_posts');
+        Cache::forget('homepage.trending_topics');
+        Cache::forget('homepage.popular_posts');
     }
 }

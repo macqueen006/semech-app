@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('excerpt')->nullable();
             $table->string('meta_description', 160)->nullable();
             $table->text('body');
-            $table->string('slug');
+            $table->string('slug')->unique();
             $table->string('image_path');
             $table->string('image_alt', 255)->nullable();
             $table->boolean('is_published');
@@ -47,9 +47,10 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();
 
+            $table->index(['is_published', 'scheduled_at', 'expires_at'], 'idx_posts_visibility');
+            $table->index(['category_id', 'is_published', 'view_count'], 'idx_posts_category_popular');
+            $table->index(['is_published', 'created_at', 'view_count'], 'idx_posts_trending');
             $table->index('view_count');
-            $table->index(['is_published', 'created_at']);
-            $table->index(['is_published', 'scheduled_at']);
             $table->index('category_id');
             $table->index('user_id');
         });
