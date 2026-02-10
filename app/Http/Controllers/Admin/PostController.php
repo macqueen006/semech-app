@@ -9,9 +9,11 @@ use App\Models\HighlightPost;
 use App\Models\Post;
 use App\Models\SavedPost;
 use App\Models\User;
+use App\Models\HistoryPost;
 use App\Notifications\PostNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class PostController extends Controller
 {
@@ -406,107 +408,157 @@ class PostController extends Controller
                 'use_expiration' => 'boolean',
                 'expires_at' => 'nullable|date',
             ], [
-                // ... validation messages (same as before)
+                // Title validation messages
+                'title.required' => 'Please enter a post title.',
+                'title.max' => 'The post title cannot exceed 255 characters.',
+                'title.unique' => 'A post with this title already exists. Please choose a different title.',
+
+                // Excerpt validation messages
+                'excerpt.required' => 'Please provide a short description for your post.',
+                'excerpt.max' => 'The short description cannot exceed 510 characters.',
+
+                // Body validation messages
+                'body.required' => 'The post content cannot be empty.',
+
+                // Category validation messages
+                'category_id.required' => 'Please select a category for your post.',
+                'category_id.integer' => 'Invalid category selection.',
+                'category_id.exists' => 'The selected category does not exist.',
+
+                // Image validation messages
+                'image_path.required' => 'Please upload a featured image for your post.',
+                'image_path.string' => 'Invalid image path.',
+
+                // Read time validation messages
+                'read_time.required' => 'Please specify the estimated reading time.',
+                'read_time.integer' => 'Reading time must be a number.',
+
+                // SEO Meta Title
+                'meta_title.max' => 'The SEO title cannot exceed 80 characters for optimal search engine display.',
+
+                // SEO Meta Description
+                'meta_description.max' => 'The SEO description cannot exceed 160 characters for optimal search engine display.',
+
+                // Focus Keyword
+                'focus_keyword.max' => 'The focus keyword cannot exceed 100 characters.',
+
+                // Image Alt Text
+                'image_alt.max' => 'The image alt text cannot exceed 255 characters.',
+
+                // Open Graph Title
+                'og_title.max' => 'The Open Graph title cannot exceed 80 characters.',
+
+                // Open Graph Description
+                'og_description.max' => 'The Open Graph description cannot exceed 160 characters.',
+
+                // Twitter Title
+                'twitter_title.max' => 'The Twitter card title cannot exceed 80 characters.',
+
+                // Twitter Description
+                'twitter_description.max' => 'The Twitter card description cannot exceed 160 characters.',
+
+                // Scheduling
+                'scheduled_at.date' => 'Please enter a valid date and time for scheduling.',
+                'scheduled_at.after' => 'The scheduled date must be in the future.',
+
+                // Expiration
+                'expires_at.date' => 'Please enter a valid expiration date.',
             ]);
 
-            // ✅ FIX: Wrap in DB transaction for atomicity
-            \DB::beginTransaction();
+            // START TRANSACTION - Ensure atomicity
+            DB::beginTransaction();
 
-            $post = Post::create([
-                'user_id' => auth()->id(),
-                'title' => $validated['title'],
-                'excerpt' => $validated['excerpt'],
-                'body' => $validated['body'],
-                'image_path' => $validated['image_path'],
-                'slug' => Str::slug($validated['title']),
-                'is_published' => true,
-                'category_id' => $validated['category_id'],
-                'read_time' => $validated['read_time'],
-                'change_user_id' => auth()->id(),
-                'changelog' => null,
-                'scheduled_at' => $request->use_scheduling && $request->scheduled_at ? $request->scheduled_at : null,
-                'expires_at' => $request->use_expiration && $request->expires_at ? $request->expires_at : null,
+            try {
+                $post = Post::create([
+                    'user_id' => auth()->id(),
+                    'title' => $validated['title'],
+                    'excerpt' => $validated['excerpt'],
+                    'body' => $validated['body'],
+                    'image_path' => $validated['image_path'],
+                    'slug' => Str::slug($validated['title']),
+                    'is_published' => true,
+                    'category_id' => $validated['category_id'],
+                    'read_time' => $validated['read_time'],
+                    'change_user_id' => auth()->id(),
+                    'changelog' => null,
+                    'scheduled_at' => $request->use_scheduling && $request->scheduled_at ? $request->scheduled_at : null,
+                    'expires_at' => $request->use_expiration && $request->expires_at ? $request->expires_at : null,
 
-                // SEO fields
-                'meta_title' => $validated['meta_title'],
-                'meta_description' => $validated['meta_description'],
-                'focus_keyword' => $validated['focus_keyword'],
-                'image_alt' => $validated['image_alt'],
-                'og_title' => $validated['og_title'],
-                'og_description' => $validated['og_description'],
-                'og_image' => $validated['og_image'],
-                'twitter_title' => $validated['twitter_title'],
-                'twitter_description' => $validated['twitter_description'],
-                'twitter_image' => $validated['twitter_image'],
-            ]);
+                    // SEO fields
+                    'meta_title' => $validated['meta_title'],
+                    'meta_description' => $validated['meta_description'],
+                    'focus_keyword' => $validated['focus_keyword'],
+                    'image_alt' => $validated['image_alt'],
+                    'og_title' => $validated['og_title'],
+                    'og_description' => $validated['og_description'],
+                    'og_image' => $validated['og_image'],
+                    'twitter_title' => $validated['twitter_title'],
+                    'twitter_description' => $validated['twitter_description'],
+                    'twitter_image' => $validated['twitter_image'],
+                ]);
 
-            // Delete the draft
-            if ($request->saved_post_id) {
-                SavedPost::where('id', $request->saved_post_id)
-                    ->where('user_id', auth()->id())
-                    ->delete();
+                // Delete the draft (inside transaction)
+                if ($request->saved_post_id) {
+                    SavedPost::where('id', $request->saved_post_id)
+                        ->where('user_id', auth()->id())
+                        ->delete();
+                }
+
+                // COMMIT - All DB operations succeeded
+                DB::commit();
+
+                // Send notification AFTER commit (outside transaction)
+                // Notifications can fail without affecting data integrity
+                try {
+                    auth()->user()->notify(new PostNotification('SUCCESS', 'Post created', "/post/{$post->slug}"));
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to send post creation notification', [
+                        'post_id' => $post->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
+                $message = 'Post published successfully!';
+                if ($request->use_scheduling && $request->scheduled_at) {
+                    $message = 'Post scheduled for ' . \Carbon\Carbon::parse($request->scheduled_at)->format('M d, Y H:i');
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'redirect' => route('admin.posts.index')
+                ]);
+
+            } catch (\Exception $e) {
+                // ROLLBACK - Something failed in the transaction
+                DB::rollBack();
+
+                \Log::error('Post creation transaction failed', [
+                    'user_id' => auth()->id(),
+                    'title' => $validated['title'] ?? null,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+
+                throw $e;
             }
-
-            \DB::commit();
-
-            auth()->user()->notify(new PostNotification('SUCCESS', 'Post created', "/post/{$post->slug}"));
-
-            $message = 'Post published successfully!';
-            if ($request->use_scheduling && $request->scheduled_at) {
-                $message = 'Post scheduled for ' . \Carbon\Carbon::parse($request->scheduled_at)->format('M d, Y H:i');
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => $message,
-                'redirect' => route('admin.posts.index')
-            ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Please correct the errors below and try again.',
                 'errors' => $e->errors()
             ], 422);
-
-        } catch (\Illuminate\Database\QueryException $e) {
-            // ✅ FIX: Catch database-specific errors
-            \DB::rollBack();
-            \Log::error('Post creation database error: ' . $e->getMessage(), [
-                'user_id' => auth()->id(),
-                'sql' => $e->getSql(),
-                'bindings' => $e->getBindings()
-            ]);
-
-            // Check for specific error types
-            if ($e->getCode() === '23000') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A post with this title already exists. Please choose a different title.'
-                ], 422);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Database error occurred. Please try again or contact support if the issue persists.'
-            ], 500);
-
         } catch (\Exception $e) {
-            // ✅ FIX: Log full exception details
-            \DB::rollBack();
-            \Log::error('Post creation failed: ' . $e->getMessage(), [
+            \Log::error('Post creation failed', [
                 'user_id' => auth()->id(),
-                'title' => $request->title ?? 'N/A',
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage() . ' (See logs for details)'
+                'message' => 'We encountered an error while creating your post. Please try again.'
             ], 500);
         }
     }
@@ -570,7 +622,7 @@ class PostController extends Controller
             'twitter_image' => $validated['twitter_image'],
         ];
 
-        // If saved_post_id exists, UPDATE and RETURN
+        // If saved_post_id exists, update that specific draft
         if ($request->saved_post_id) {
             $savedPost = SavedPost::find($request->saved_post_id);
 
@@ -585,7 +637,7 @@ class PostController extends Controller
             }
         }
 
-        // Only create NEW draft if no saved_post_id was provided
+        // Create new draft only if no saved_post_id was provided
         $savedPost = SavedPost::create(array_merge($draftData, [
             'user_id' => auth()->id(),
         ]));
@@ -594,7 +646,7 @@ class PostController extends Controller
             'success' => true,
             'message' => 'Draft saved at ' . now()->format('H:i:s'),
             'saved_post_id' => $savedPost->id,
-            'update_url' => true  // Tell frontend to update URL with ?edit={id}
+            'update_url' => true
         ]);
     }
 
@@ -608,28 +660,14 @@ class PostController extends Controller
             'image.max' => 'The image size cannot exceed 1MB.',
         ]);
 
-        try {
-            $imageStorageService = app(\App\Services\ImageStorageService::class);
-            $uploadedPath = $imageStorageService->storePostImage($request->file('image'));
+        $imageStorageService = app(\App\Services\ImageStorageService::class);
+        $uploadedPath = $imageStorageService->storePostImage($request->file('image'));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Image uploaded successfully!',
-                'path' => $uploadedPath
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Image upload failed: ' . $e->getMessage(), [
-                'filename' => $request->file('image')->getClientOriginalName(),
-                'size' => $request->file('image')->getSize(),
-                'mime' => $request->file('image')->getMimeType()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Upload failed: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Image uploaded successfully!',
+            'path' => $uploadedPath
+        ]);
     }
 
     public function uploadEditorImage(Request $request)
@@ -739,7 +777,7 @@ class PostController extends Controller
         ]);
 
         // Store draft in history
-        \App\Models\HistoryPost::updateOrCreate(
+        HistoryPost::updateOrCreate(
             [
                 'post_id' => $id,
                 'additional_info' => 2, // 2 = auto-save draft
@@ -874,82 +912,122 @@ class PostController extends Controller
                 'expires_at.date' => 'Please enter a valid expiration date.',
             ]);
 
-            // Build changelog by comparing old vs new
-            $changelog = [];
+            // START TRANSACTION - Ensure atomicity
+            DB::beginTransaction();
 
-            if ($post->title !== $validated['title']) $changelog[] = 'Title';
-            if ($post->excerpt !== $validated['excerpt']) $changelog[] = 'Short description';
-            if ($post->body !== $validated['body']) $changelog[] = 'Content';
-            if ($post->category_id !== (int)$validated['category_id']) $changelog[] = 'Category';
-            if ($post->image_path !== $validated['image_path']) $changelog[] = 'Image';
-            if ($post->is_published !== (bool)($request->is_published ?? false)) $changelog[] = 'Visibility';
+            try {
+                // Build changelog by comparing old vs new
+                $changelog = [];
 
-            // Snapshot the PREVIOUS version into HistoryPost (only if something changed)
-            if (!empty($changelog)) {
-                \App\Models\HistoryPost::create([
-                    'post_id' => $post->id,
-                    'title' => $post->title,
-                    'excerpt' => $post->excerpt,
-                    'body' => $post->body,
-                    'image_path' => $post->image_path,
-                    'slug' => $post->slug,
-                    'is_published' => $post->is_published,
-                    'additional_info' => $post->additional_info,
-                    'category_id' => $post->category_id,
-                    'read_time' => $post->read_time,
-                    'change_user_id' => $post->change_user_id,
-                    'changelog' => $post->changelog,
-                    'created_at' => $post->updated_at,
-                    'updated_at' => $post->updated_at,
+                if ($post->title !== $validated['title']) $changelog[] = 'Title';
+                if ($post->excerpt !== $validated['excerpt']) $changelog[] = 'Short description';
+                if ($post->body !== $validated['body']) $changelog[] = 'Content';
+                if ($post->category_id !== (int)$validated['category_id']) $changelog[] = 'Category';
+                if ($post->image_path !== $validated['image_path']) $changelog[] = 'Image';
+                if ($post->is_published !== (bool)($request->is_published ?? false)) $changelog[] = 'Visibility';
+
+                // Snapshot the PREVIOUS version into HistoryPost (only if something changed)
+                if (!empty($changelog)) {
+                    HistoryPost::create([
+                        'post_id' => $post->id,
+                        'title' => $post->title,
+                        'excerpt' => $post->excerpt,
+                        'body' => $post->body,
+                        'image_path' => $post->image_path,
+                        'slug' => $post->slug,
+                        'is_published' => $post->is_published,
+                        'additional_info' => $post->additional_info,
+                        'category_id' => $post->category_id,
+                        'read_time' => $post->read_time,
+                        'change_user_id' => $post->change_user_id,
+                        'changelog' => $post->changelog,
+                        'scheduled_at' => $post->scheduled_at,
+                        'expires_at' => $post->expires_at,
+                        'meta_title' => $post->meta_title,
+                        'meta_description' => $post->meta_description,
+                        'focus_keyword' => $post->focus_keyword,
+                        'image_alt' => $post->image_alt,
+                        'og_title' => $post->og_title,
+                        'og_description' => $post->og_description,
+                        'og_image' => $post->og_image,
+                        'twitter_title' => $post->twitter_title,
+                        'twitter_description' => $post->twitter_description,
+                        'twitter_image' => $post->twitter_image,
+                        'created_at' => $post->updated_at,
+                        'updated_at' => $post->updated_at,
+                    ]);
+                }
+
+                // Update the post
+                $post->update([
+                    'title' => $validated['title'],
+                    'excerpt' => $validated['excerpt'],
+                    'body' => $validated['body'],
+                    'image_path' => $validated['image_path'],
+                    'slug' => Str::slug($validated['title']),
+                    'is_published' => $request->is_published ? true : false,
+                    'category_id' => $validated['category_id'],
+                    'read_time' => $validated['read_time'],
+                    'change_user_id' => auth()->id(),
+                    'changelog' => implode(', ', $changelog),
+                    'additional_info' => 0,
+                    'scheduled_at' => $request->use_scheduling && $request->scheduled_at ? $request->scheduled_at : null,
+                    'expires_at' => $request->use_expiration && $request->expires_at ? $request->expires_at : null,
+                    'meta_title' => $validated['meta_title'],
+                    'meta_description' => $validated['meta_description'],
+                    'focus_keyword' => $validated['focus_keyword'],
+                    'image_alt' => $validated['image_alt'],
+                    'og_title' => $validated['og_title'],
+                    'og_description' => $validated['og_description'],
+                    'og_image' => $validated['og_image'],
+                    'twitter_title' => $validated['twitter_title'],
+                    'twitter_description' => $validated['twitter_description'],
+                    'twitter_image' => $validated['twitter_image'],
                 ]);
+
+                // Delete the auto-save draft if it exists
+                HistoryPost::where('post_id', $post->id)
+                    ->where('additional_info', 2)
+                    ->delete();
+
+                // COMMIT - All DB operations succeeded
+                DB::commit();
+
+                // Notify original author if edited by someone else (outside transaction)
+                if (auth()->id() !== $post->user_id) {
+                    try {
+                        $post->user->notify(new PostNotification(
+                            'INFO',
+                            'The post has been edited by ' . auth()->user()->firstname . ' ' . auth()->user()->lastname . '.',
+                            "/post/{$post->slug}"
+                        ));
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to send post update notification', [
+                            'post_id' => $post->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Post updated successfully!',
+                    'redirect' => route('admin.posts.index')
+                ]);
+
+            } catch (\Exception $e) {
+                // ROLLBACK - Something failed in the transaction
+                DB::rollBack();
+
+                \Log::error('Post update transaction failed', [
+                    'post_id' => $id,
+                    'user_id' => auth()->id(),
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+
+                throw $e;
             }
-
-            // Update the post
-            $post->update([
-                'title' => $validated['title'],
-                'excerpt' => $validated['excerpt'],
-                'body' => $validated['body'],
-                'image_path' => $validated['image_path'],
-                'slug' => Str::slug($validated['title']),
-                'is_published' => $request->is_published ? true : false,
-                'category_id' => $validated['category_id'],
-                'read_time' => $validated['read_time'],
-                'change_user_id' => auth()->id(),
-                'changelog' => implode(', ', $changelog),
-                'additional_info' => 0,
-                'scheduled_at' => $request->use_scheduling && $request->scheduled_at ? $request->scheduled_at : null,
-                'expires_at' => $request->use_expiration && $request->expires_at ? $request->expires_at : null,
-                'meta_title' => $validated['meta_title'],
-                'meta_description' => $validated['meta_description'],
-                'focus_keyword' => $validated['focus_keyword'],
-                'image_alt' => $validated['image_alt'],
-                'og_title' => $validated['og_title'],
-                'og_description' => $validated['og_description'],
-                'og_image' => $validated['og_image'],
-                'twitter_title' => $validated['twitter_title'],
-                'twitter_description' => $validated['twitter_description'],
-                'twitter_image' => $validated['twitter_image'],
-            ]);
-
-            // Notify original author if edited by someone else
-            if (auth()->id() !== $post->user_id) {
-                $post->user->notify(new PostNotification(
-                    'INFO',
-                    'The post has been edited by ' . auth()->user()->firstname . ' ' . auth()->user()->lastname . '.',
-                    "/post/{$post->slug}"
-                ));
-            }
-
-            // Delete the auto-save draft if it exists
-            \App\Models\HistoryPost::where('post_id', $post->id)
-                ->where('additional_info', 2)
-                ->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Post updated successfully!',
-                'redirect' => route('admin.posts.index')
-            ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -958,7 +1036,13 @@ class PostController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Post update failed: ' . $e->getMessage());
+            \Log::error('Post update failed', [
+                'post_id' => $id,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'We encountered an error while updating your post. Please try again.'
@@ -974,7 +1058,7 @@ class PostController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $autoSave = \App\Models\HistoryPost::where('post_id', $id)
+        $autoSave = HistoryPost::where('post_id', $id)
             ->where('additional_info', 2)
             ->first();
 
@@ -1053,19 +1137,14 @@ class PostController extends Controller
         ]);
     }
 
-    public function destory()
-    {
-
-    }
-
     public function show()
     {
-
+        // Placeholder - implementation not provided
     }
 
     public function analytics()
     {
-
+        // Placeholder - implementation not provided
     }
 
     /**
@@ -1079,7 +1158,7 @@ class PostController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        \App\Models\HistoryPost::where('post_id', $id)
+        HistoryPost::where('post_id', $id)
             ->where('additional_info', 2)
             ->delete();
 

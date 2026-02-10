@@ -3,12 +3,14 @@
 namespace App\Observers;
 
 use App\Models\HistoryPost;
-use App\Services\ImageServices;
+use App\Services\ImageStorageService;
+use App\Services\ImageUsageService;
 
 class HistoryPostObserver
 {
     public function __construct(
-        private ImageServices $imageService
+        private ImageStorageService $imageStorageService,
+        private ImageUsageService $usageService
     ) {}
 
     /**
@@ -16,12 +18,20 @@ class HistoryPostObserver
      */
     public function deleting(HistoryPost $historyPost): void
     {
-        // Delete thumbnail image
+        // Clear cache first so usage count is accurate
         if ($historyPost->image_path) {
-            $this->imageService->deleteImageByPath($historyPost->image_path);
+            $this->usageService->clearUsageCache($historyPost->image_path);
         }
 
-        // Delete images from body content
+        if ($historyPost->body) {
+            $this->clearBodyImagesCache($historyPost->body);
+        }
+
+        // Now delete with accurate usage counts
+        if ($historyPost->image_path) {
+            $this->imageStorageService->safeDelete($historyPost->image_path);
+        }
+
         if ($historyPost->body) {
             $this->deleteBodyImages($historyPost->body);
         }
@@ -37,7 +47,8 @@ class HistoryPostObserver
         if ($historyPost->isDirty('image_path') && $historyPost->getOriginal('image_path')) {
             $oldPath = $historyPost->getOriginal('image_path');
             if (!str_contains($oldPath, 'default')) {
-                $this->imageService->deleteImageByPath($oldPath);
+                $this->usageService->clearUsageCache($oldPath);
+                $this->imageStorageService->safeDelete($oldPath);
             }
         }
 
@@ -53,18 +64,38 @@ class HistoryPostObserver
 
     /**
      * Handle the HistoryPost "forceDeleted" event.
-     * Same as deleting for force delete
      */
     public function forceDeleted(HistoryPost $historyPost): void
     {
-        // Delete thumbnail image
+        // Clear cache first so usage count is accurate
         if ($historyPost->image_path) {
-            $this->imageService->deleteImageByPath($historyPost->image_path);
+            $this->usageService->clearUsageCache($historyPost->image_path);
         }
 
-        // Delete images from body content
+        if ($historyPost->body) {
+            $this->clearBodyImagesCache($historyPost->body);
+        }
+
+        // Now delete with accurate usage counts
+        if ($historyPost->image_path) {
+            $this->imageStorageService->safeDelete($historyPost->image_path);
+        }
+
         if ($historyPost->body) {
             $this->deleteBodyImages($historyPost->body);
+        }
+    }
+
+    /**
+     * Clear usage cache for all images in body
+     */
+    private function clearBodyImagesCache(string $body): void
+    {
+        preg_match_all('/<img[^>]+src="([^"]+)"/', $body, $matches);
+
+        foreach ($matches[1] as $imagePath) {
+            $imagePath = parse_url($imagePath, PHP_URL_PATH);
+            $this->usageService->clearUsageCache($imagePath);
         }
     }
 
@@ -77,7 +108,7 @@ class HistoryPostObserver
 
         foreach ($matches[1] as $imagePath) {
             $imagePath = parse_url($imagePath, PHP_URL_PATH);
-            $this->imageService->deleteImageByPath($imagePath);
+            $this->imageStorageService->safeDelete($imagePath);
         }
     }
 
@@ -97,9 +128,10 @@ class HistoryPostObserver
         // Find removed images
         $removedImages = array_diff($oldImages, $newImages);
 
-        // Delete removed images
+        // Clear cache and delete removed images (safe delete - only if not used elsewhere)
         foreach ($removedImages as $imagePath) {
-            $this->imageService->deleteImageByPath($imagePath);
+            $this->usageService->clearUsageCache($imagePath);
+            $this->imageStorageService->safeDelete($imagePath);
         }
     }
 }
