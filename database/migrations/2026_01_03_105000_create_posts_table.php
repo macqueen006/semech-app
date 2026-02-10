@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->string('title')->unique();
-            $table->string('meta_title', 60)->nullable();
+            $table->string('meta_title', 80)->nullable();
             $table->text('excerpt')->nullable();
             $table->string('meta_description', 160)->nullable();
             $table->text('body');
@@ -29,14 +29,14 @@ return new class extends Migration
             $table->integer('read_time')->nullable()->default(null);
             $table->integer('view_count')->default(0);
             // Open Graph tags
-            $table->string('og_title', 60)->nullable();
+            $table->string('og_title', 80)->nullable();
             $table->string('og_description', 160)->nullable();
             $table->string('focus_keyword', 100)->nullable();
-            $table->string('og_image', 500)->nullable();
+            $table->string('og_image', 2048)->nullable();
             // Twitter Card tags
-            $table->string('twitter_title', 60)->nullable();
+            $table->string('twitter_title', 80)->nullable();
             $table->string('twitter_description', 160)->nullable();
-            $table->string('twitter_image', 500)->nullable();
+            $table->string('twitter_image', 2048)->nullable();
 
             $table->unsignedBigInteger('category_id')->nullable();
             $table->foreign('category_id')->references('id')->on('categories')->nullOnDelete();

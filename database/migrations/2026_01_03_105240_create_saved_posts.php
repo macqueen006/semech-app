@@ -25,16 +25,16 @@ return new class extends Migration
             $table->timestamp('scheduled_at')->nullable();
             $table->timestamp('expires_at')->nullable();
             //SEO
-            $table->string('meta_title', 60)->nullable();
+            $table->string('meta_title', 80)->nullable();
             $table->string('meta_description', 160)->nullable();
             $table->string('focus_keyword', 100)->nullable();
             $table->string('image_alt', 255)->nullable();
-            $table->string('og_title', 60)->nullable();
+            $table->string('og_title', 80)->nullable();
             $table->string('og_description', 160)->nullable();
-            $table->string('og_image', 500)->nullable();
-            $table->string('twitter_title', 60)->nullable();
+            $table->string('og_image', 2048)->nullable();
+            $table->string('twitter_title', 80)->nullable();
             $table->string('twitter_description', 160)->nullable();
-            $table->string('twitter_image', 500)->nullable();
+            $table->string('twitter_image', 2048)->nullable();
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();
         });

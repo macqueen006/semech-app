@@ -166,49 +166,56 @@
         function autoFillSeoFields() {
             if (!autoFillSeo) return;
 
-            const title = document.getElementById('title').value;
+            const title   = document.getElementById('title').value;
             const excerpt = document.getElementById('excerpt').value;
-            const imagePath = document.getElementById('imagePath').value;
+            const imgPath = document.getElementById('imagePath')?.value || document.getElementById('imagePath').value;
 
-            const metaTitleInput = document.getElementById('metaTitle');
+            const metaTitleInput       = document.getElementById('metaTitle');
             const metaDescriptionInput = document.getElementById('metaDescription');
 
-            if (title) {
-                metaTitleInput.value = title.substring(0, 80);
+            const SEO_TITLE_MAX = 80;
+            const SEO_DESC_MAX  = 160;
+
+            const safeTitle   = title.substring(0, SEO_TITLE_MAX);
+            const safeExcerpt = excerpt.substring(0, SEO_DESC_MAX);
+
+            if (title && metaTitleInput) {
+                metaTitleInput.value = safeTitle;
                 updateCharCount('metaTitle', metaTitleInput.value.length);
             }
 
-            if (excerpt) {
-                metaDescriptionInput.value = excerpt.substring(0, 160);
+            if (excerpt && metaDescriptionInput) {
+                metaDescriptionInput.value = safeExcerpt;
                 updateCharCount('metaDescription', metaDescriptionInput.value.length);
             }
 
-            const ogTitle = document.getElementById('ogTitle');
+            const ogTitle       = document.getElementById('ogTitle');
             const ogDescription = document.getElementById('ogDescription');
-            const ogImage = document.getElementById('ogImage');
+            const ogImage       = document.getElementById('ogImage');
 
             if (ogTitle) {
-                ogTitle.value = metaTitleInput.value || title.substring(0, 80);
+                // Use the already-truncated metaTitle value, not raw title
+                ogTitle.value = (metaTitleInput ? metaTitleInput.value : safeTitle);
                 updateCharCount('ogTitle', ogTitle.value.length);
             }
             if (ogDescription) {
-                ogDescription.value = metaDescriptionInput.value || excerpt.substring(0, 160);
+                ogDescription.value = (metaDescriptionInput ? metaDescriptionInput.value : safeExcerpt);
                 updateCharCount('ogDescCount', ogDescription.value.length);
             }
-            if (ogImage && imagePath) {
-                ogImage.value = imagePath;
+            if (ogImage && imgPath) {
+                ogImage.value = imgPath;
             }
 
-            const twitterTitle = document.getElementById('twitterTitle');
+            const twitterTitle       = document.getElementById('twitterTitle');
             const twitterDescription = document.getElementById('twitterDescription');
-            const twitterImage = document.getElementById('twitterImage');
+            const twitterImage       = document.getElementById('twitterImage');
 
             if (twitterTitle) {
-                twitterTitle.value = ogTitle ? ogTitle.value : '';
+                twitterTitle.value = ogTitle ? ogTitle.value : safeTitle;
                 updateCharCount('twitterTitle', twitterTitle.value.length);
             }
             if (twitterDescription) {
-                twitterDescription.value = ogDescription ? ogDescription.value : '';
+                twitterDescription.value = ogDescription ? ogDescription.value : safeExcerpt;
                 updateCharCount('twitterDescCount', twitterDescription.value.length);
             }
             if (twitterImage) {

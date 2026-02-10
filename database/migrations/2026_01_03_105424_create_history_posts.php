@@ -24,16 +24,16 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable();
             $table->integer('read_time')->nullable()->default(null);
             //SEO
-            $table->string('meta_title', 60)->nullable();
+            $table->string('meta_title', 80)->nullable();
             $table->string('meta_description', 160)->nullable();
             $table->string('focus_keyword', 100)->nullable();
             $table->string('image_alt', 255)->nullable();
-            $table->string('og_title', 60)->nullable();
+            $table->string('og_title', 80)->nullable();
             $table->string('og_description', 160)->nullable();
-            $table->string('og_image', 500)->nullable();
-            $table->string('twitter_title', 60)->nullable();
+            $table->string('og_image', 2048)->nullable();
+            $table->string('twitter_title', 80)->nullable();
             $table->string('twitter_description', 160)->nullable();
-            $table->string('twitter_image', 500)->nullable();
+            $table->string('twitter_image', 2048)->nullable();
             $table->unsignedBigInteger('category_id')->nullable();
             $table->foreign('category_id')->references('id')->on('categories')->nullOnDelete();
             $table->unsignedBigInteger('change_user_id')->nullable(); // Make nullable
