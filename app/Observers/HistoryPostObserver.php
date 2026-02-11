@@ -11,8 +11,10 @@ class HistoryPostObserver
 {
     public function __construct(
         private ImageStorageService $imageStorageService,
-        private ImageUsageService $usageService
-    ) {}
+        private ImageUsageService   $usageService
+    )
+    {
+    }
 
     /**
      * Handle the HistoryPost "deleting" event.
