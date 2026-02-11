@@ -35,7 +35,7 @@ class PostObserver
      * Handle the Post "updating" event.
      * Clean up removed images when post is updated
      */
-    public function updating(Post $post): void
+  /*  public function updating(Post $post): void
     {
         // Check if thumbnail changed
         if ($post->isDirty('image_path') && $post->getOriginal('image_path')) {
@@ -54,7 +54,7 @@ class PostObserver
             // Find images that were removed
             $this->deleteRemovedImages($oldBody, $newBody);
         }
-    }
+    }*/
 
     /**
      * Handle the Post "updated" event.
@@ -71,7 +71,7 @@ class PostObserver
             Log::info("Post publish status changed: {$post->title} (ID: {$post->id})");
         }
 
-        // Clear caches if category changed
+      /*  // Clear caches if category changed
         if ($post->wasChanged('category_id')) {
             // Clear both old and new category caches
             $this->clearCategoryCaches($post->getOriginal('category_id'));
@@ -89,7 +89,71 @@ class PostObserver
         if ($post->wasChanged('view_count') && $post->view_count % 10 === 0) {
             Cache::forget('homepage.trending_topics');
             Cache::forget('homepage.popular_posts');
+        }*/
+        if ($post->wasChanged('image_path')) {
+            $oldPath = $post->getOriginal('image_path');
+
+            if ($oldPath
+                && !str_contains($oldPath, 'default')
+                && $oldPath !== $post->image_path
+            ) {
+                try {
+                    $this->usageService->clearUsageCache($oldPath);
+                    $this->imageStorageService->safeDelete($oldPath);
+                } catch (\Exception $e) {
+                    Log::warning('PostObserver: failed to delete old featured image', [
+                        'post_id'  => $post->id,
+                        'old_path' => $oldPath,
+                        'error'    => $e->getMessage(),
+                    ]);
+                }
+            }
         }
+
+        if ($post->wasChanged('body')) {
+            $oldBody = $post->getOriginal('body') ?? '';
+            $newBody = $post->body ?? '';
+            $this->deleteRemovedBodyImages($oldBody, $newBody);
+        }
+    }
+
+    /**
+     * Delete images that were in the old body but are no longer in the new body.
+     * Uses set difference so we never touch images still referenced.
+     */
+    private function deleteRemovedBodyImages(string $oldBody, string $newBody): void
+    {
+        $oldImages = $this->extractImagePaths($oldBody);
+        $newImages = $this->extractImagePaths($newBody);
+
+        foreach (array_diff($oldImages, $newImages) as $imagePath) {
+            try {
+                $this->usageService->clearUsageCache($imagePath);
+                $this->imageStorageService->safeDelete($imagePath);
+            } catch (\Exception $e) {
+                Log::warning('PostObserver: failed to delete removed body image', [
+                    'path'  => $imagePath,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Extract all /images/... paths from an HTML body string.
+     * Returns normalised internal paths only — ignores external http(s) URLs.
+     */
+    private function extractImagePaths(string $html): array
+    {
+        preg_match_all('/<img[^>]+src="([^"]+)"/i', $html, $matches);
+
+        return array_values(array_filter(
+            array_map(function (string $url) {
+                $path = parse_url($url, PHP_URL_PATH);
+                // Only manage images stored in our own storage
+                return ($path && str_starts_with($path, '/images/')) ? $path : null;
+            }, $matches[1])
+        ));
     }
 
     /**
@@ -99,7 +163,7 @@ class PostObserver
     {
         // IMAGE CLEANUP (your original logic)
         // Clear cache first so usage count is accurate
-        if ($post->image_path) {
+       /* if ($post->image_path) {
             $this->usageService->clearUsageCache($post->image_path);
         }
 
@@ -114,7 +178,7 @@ class PostObserver
 
         if ($post->body) {
             $this->deleteBodyImages($post->body);
-        }
+        }*/
     }
 
     /**
@@ -126,6 +190,7 @@ class PostObserver
         $this->clearHomepageCaches();
         $this->clearCategoryCaches($post->category_id);
         $this->clearRelatedPostsCache($post);
+        $this->forceDeleted($post);
 
         Log::info("Post deleted: {$post->title} (ID: {$post->id})");
     }
@@ -141,15 +206,44 @@ class PostObserver
         Log::info("Post restored: {$post->title} (ID: {$post->id})");
     }
 
-    /**
-     * Handle the Post "force deleted" event.
-     */
+    private function deleteAllBodyImages(string $body): void
+    {
+        foreach ($this->extractImagePaths($body) as $imagePath) {
+            try {
+                $this->usageService->clearUsageCache($imagePath);
+                $this->imageStorageService->safeDelete($imagePath);
+            } catch (\Exception $e) {
+                Log::warning('PostObserver: failed to delete body image', [
+                    'path'  => $imagePath,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
     public function forceDeleted(Post $post): void
     {
         $this->clearHomepageCaches();
         $this->clearCategoryCaches($post->category_id);
 
         Log::info("Post force deleted: {$post->title} (ID: {$post->id})");
+
+        if ($post->image_path && !str_contains($post->image_path, 'default')) {
+            try {
+                $this->usageService->clearUsageCache($post->image_path);
+                $this->imageStorageService->safeDelete($post->image_path);
+            } catch (\Exception $e) {
+                Log::warning('PostObserver: failed to delete featured image on force-delete', [
+                    'post_id' => $post->id,
+                    'path'    => $post->image_path,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($post->body) {
+            $this->deleteAllBodyImages($post->body);
+        }
     }
 
     // ========================================

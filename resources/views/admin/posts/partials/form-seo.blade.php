@@ -155,7 +155,7 @@
                             class="py-2 sm:py-2.5 px-3 sm:px-4 block w-full bg-layer border-layer-line rounded-lg text-sm text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus disabled:opacity-50 disabled:pointer-events-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-none [&::-webkit-scrollbar-track]:bg-scrollbar-track [&::-webkit-scrollbar-thumb]:bg-scrollbar-thumb"
                         >{{ $savedPost->og_description ?? '' }}</textarea>
                         <p class="text-xs text-muted-foreground-1 mt-1">
-                            <span id="ogDescription">{{ $savedPost ? strlen($savedPost->og_description ?? '') : 0 }}</span>/160
+                            <span id="ogDescriptionCount">{{ $savedPost ? strlen($savedPost->og_description ?? '') : 0 }}</span>/160
                         </p>
                     </div>
 
@@ -210,7 +210,7 @@
                             class="py-2 sm:py-2.5 px-3 sm:px-4 block w-full bg-layer border-layer-line rounded-lg text-sm text-foreground placeholder:text-muted-foreground-1 focus:border-primary-focus focus:ring-primary-focus disabled:opacity-50 disabled:pointer-events-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-none [&::-webkit-scrollbar-track]:bg-scrollbar-track [&::-webkit-scrollbar-thumb]:bg-scrollbar-thumb"
                         >{{ $savedPost->twitter_description ?? '' }}</textarea>
                         <p class="text-xs text-muted-foreground-1 mt-1">
-                            <span id="twitterDescription">{{ $savedPost ? strlen($savedPost->twitter_description ?? '') : 0 }}</span>/160
+                            <span id="twitterDescriptionCount">{{ $savedPost ? strlen($savedPost->twitter_description ?? '') : 0 }}</span>/160
                         </p>
                     </div>
 
